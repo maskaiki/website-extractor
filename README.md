@@ -1,6 +1,3 @@
-# website-extractor
-Extract clean HTML, CSS, JS, high-res assets, and design tokens from any domain in one click with real-time folder inspection.
-
 # Website Extractor
 
 **Website Extractor** is a modern, full-stack web application that extracts every element from any domain in a single click. Built with **Playwright Stealth**, **Server-Sent Events (SSE)**, and **Chrome DevTools Protocol (CDP)** inspection via `morluto/rea`, it converts live websites—including Framer, Webflow, WordPress, and custom stacks—into clean, local, ready-to-use `.zip` archives.
