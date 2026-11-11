@@ -1,0 +1,23 @@
+{
+  "name": "rea-nocode-exporter",
+  "version": "1.0.0",
+  "description": "Website extractor: NoCodeExport + morluto/rea Reverse Engineering",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["web-scraper", "reverse-engineering", "no-code", "playwright", "rea"],
+  "license": "MIT",
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.1",
+    "playwright": "^1.49.0"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}
+

@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="id" class="lenis">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Web Extractor</title>
+
+  <!-- STRICT SINGLE FONT FAMILY: Plus Jakarta Sans (Editorial Display & UI) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Lenis Smooth Scroll, GSAP, Vanilla-Tilt -->
+  <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+
+  <style>
+    /* ==========================================================================
+       STRICT DESIGN TOKENS (Diadaptasi dari TD_Alexfolio + Cobalt Reference)
+       ========================================================================== */
+    :root {
+      --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+      /* Cobalt Blue & Crisp Paper Palette */
+      --bg-cobalt-deep: #041d42;
+      --bg-cobalt-mid: #083b82;
+      --bg-cobalt-accent: #0d5bd9;
+      --accent-sky: #38bdf8;
+
+      --paper-white: #ffffff;
+      --paper-off: #f8fafc;
+      --paper-muted: #e2e8f0;
+
+      --ink-dark: #071936;
+      --ink-mid: #475569;
+      --ink-light: #94a3b8;
+
+      --line-light: rgba(255, 255, 255, 0.14);
+      --line-dark: rgba(7, 25, 54, 0.12);
+    }
+
+    /* STRICT TYPOGRAPHY RULE: Satu Font untuk SEMUA Elemen Tanpa Terkecuali */
+    *, *::before, *::after, body, input, select, button, textarea, pre, code, span, div, p, h1, h2, h3, h4 {
+      box-sizing: border-box;
+      font-family: var(--font-main) !important;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      margin: 0;
+      padding: 0;
+    }
+
+    html.lenis { height: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+    body {
+      background: radial-gradient(circle at 50% 18%, #0d5bd9 0%, #062f6b 52%, #031530 100%);
+      color: var(--paper-white);
+      overflow-x: hidden;
+      min-height: 100vh;
+    }
+
+    /* ==========================================================================
+       3D PERSPECTIVE BACKGROUND & SOFT DEPTH-OF-FIELD BLUR
+       ========================================================================== */
+    .bg-stage {
+      position: fixed;
+      inset: 0;
+      perspective: 1200px;
+      z-index: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .bg-grid-3d {
+      position: absolute;
+      width: 140vw;
+      height: 140vh;
+      left: -20vw;
+      top: -20vh;
+      transform: rotateX(26deg) rotateZ(-12deg) translateZ(-100px);
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .bg-cell {
+      background: linear-gradient(155deg, rgba(11, 68, 158, 0.82), rgba(4, 25, 60, 0.94));
+      padding: 36px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .bg-cell-num {
+      font-size: 88px;
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      line-height: 0.9;
+      color: rgba(255, 255, 255, 0.06);
+    }
+
+    .dof-vignette {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      backdrop-filter: blur(7px);
+      -webkit-mask-image: radial-gradient(circle at 50% 42%, transparent 42%, black 95%);
+      mask-image: radial-gradient(circle at 50% 42%, transparent 42%, black 95%);
+    }
+
+    /* ==========================================================================
+       LAYOUT CONTAINERS & EDITORIAL SECTION HEADERS (Gaya TD_Alexfolio)
+       ========================================================================== */
+    .page-wrap {
+      position: relative;
+      z-index: 5;
+      width: 100%;
+    }
+
+    /* Minimalist Top Navigation (Persis Header TD_Alexfolio) */
+    .top-nav {
+      max-width: 1440px;
+      margin: 0 auto;
+      height: 92px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .nav-link {
+      color: var(--paper-white);
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      position: relative;
+      padding-bottom: 4px;
+      cursor: pointer;
+      opacity: 0.9;
+      transition: opacity 0.2s;
+    }
+    .nav-link:hover { opacity: 1; }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 0%;
+      height: 1.5px;
+      background: var(--paper-white);
+      transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .nav-link:hover::after { width: 100%; }
+
+    .nav-group {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+    }
+
+    /* Sticky Section Divider Bar (// Intro, // Workspace, // Archive) */
+    .section-bar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      width: 100%;
+      background: rgba(4, 29, 66, 0.72);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+
+    .section-bar-line {
+      width: 100%;
+      height: 1px;
+      background: var(--line-light);
+    }
+
+    .section-bar-inner {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .section-bar-slash {
+      color: var(--accent-sky);
+    }
+
+    .section-container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 110px 24px 130px;
+    }
+
+    /* Editorial Split Layout: 33% Sticky Giant Number + 67% Content */
+    .editorial-split {
+      display: flex;
+      align-items: flex-start;
+      gap: 48px;
+      width: 100%;
+    }
+
+    .sticky-index-col {
+      width: 28%;
+      position: sticky;
+      top: 96px;
+      display: flex;
+      justify-content: flex-start;
+    }
+
+    .giant-outline-num {
+      font-size: clamp(120px, 15vw, 220px);
+      font-weight: 300;
+      line-height: 0.88;
+      letter-spacing: -0.04em;
+      color: transparent;
+      -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.28);
+      user-select: none;
+    }
+
+    .content-col {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 64px;
+    }
+
+    /* ==========================================================================
+       3D WHITE PAPER CARD (Gaya Kartu Utama & Bento Card TD_Alexfolio)
+       ========================================================================== */
+    .white-paper-shell {
+      background: var(--paper-white);
+      color: var(--ink-dark);
+      border-radius: 24px;
+      padding: 14px;
+      box-shadow:
+        0 40px 80px -20px rgba(2, 10, 28, 0.7),
+        0 12px 24px -8px rgba(4, 29, 66, 0.35);
+      position: relative;
+      transform-style: preserve-3d;
+    }
+
+    .white-paper-inner {
+      border: 1px solid var(--line-dark);
+      border-radius: 16px;
+      padding: 48px;
+      background: var(--paper-white);
+      position: relative;
+    }
+
+    /* 3D Red Push-Pin Minimalis */
+    .pin-3d {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 32% 30%, #ff8080 0%, #ef4444 50%, #991b1b 100%);
+      box-shadow: 0 8px 14px rgba(2, 10, 28, 0.35), inset 0 2px 3px rgba(255, 255, 255, 0.6);
+      margin: -26px auto 24px;
+    }
+
+    .display-title {
+      font-size: clamp(44px, 6vw, 76px);
+      font-weight: 600;
+      letter-spacing: -0.035em;
+      line-height: 1.02;
+      color: var(--ink-dark);
+    }
+
+    .editorial-lead {
+      font-size: 18px;
+      font-weight: 400;
+      line-height: 1.5;
+      letter-spacing: -0.01em;
+      color: var(--ink-mid);
+      max-width: 540px;
+    }
+
+    /* Minimalist Input Row */
+    .input-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 40px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--line-dark);
+    }
+
+    .clean-input {
+      flex: 1;
+      min-width: 240px;
+      height: 58px;
+      padding: 0 22px;
+      border-radius: 14px;
+      border: 1px solid rgba(7, 25, 54, 0.18);
+      background: var(--paper-off);
+      color: var(--ink-dark);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .clean-input:focus {
+      border-color: var(--bg-cobalt-accent);
+      background: var(--paper-white);
+    }
+    .clean-input::placeholder {
+      color: var(--ink-light);
+      font-weight: 400;
+    }
+
+    .clean-select {
+      height: 58px;
+      padding: 0 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(7, 25, 54, 0.18);
+      background: var(--paper-off);
+      color: var(--ink-dark);
+      font-size: 15px;
+      font-weight: 500;
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* Pill Button (Terinspirasi dari tombol "See my Work" TD_Alexfolio) */
+    .pill-btn {
+      height: 58px;
+      padding: 0 38px;
+      border-radius: 56px;
+      border: none;
+      background: var(--ink-dark);
+      color: var(--paper-white);
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s;
+    }
+    .pill-btn:hover {
+      background: var(--bg-cobalt-accent);
+      transform: translateY(-1px);
+    }
+    .pill-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .pill-btn-outline {
+      height: 44px;
+      padding: 0 24px;
+      border-radius: 56px;
+      border: 1px solid var(--line-dark);
+      background: transparent;
+      color: var(--ink-dark);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .pill-btn-outline:hover {
+      background: var(--ink-dark);
+      color: var(--paper-white);
+    }
+
+    /* Minimalist Toggle Row (Gaya List 01, 02 di Services TD_Alexfolio) */
+    .Minimal-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 32px;
+      margin-top: 24px;
+    }
+
+    .toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink-mid);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-label input {
+      width: 16px;
+      height: 16px;
+      accent-color: var(--bg-cobalt-accent);
+    }
+
+    /* ==========================================================================
+       2D FLUFFY WHITE CAT STAGE (Minimalist & Clean)
+       ========================================================================== */
+    .cat-stage-card {
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--line-light);
+      border-radius: 24px;
+      padding: 32px 40px;
+    }
+
+    .cat-stage-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+      gap: 16px;
+    }
+
+    .stage-track {
+      position: relative;
+      height: 148px;
+      border-radius: 16px;
+      background: rgba(3, 21, 48, 0.45);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0 48px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      overflow: hidden;
+    }
+
+    .track-line {
+      position: absolute;
+      left: 120px;
+      right: 120px;
+      bottom: 34px;
+      height: 1px;
+      background: rgba(255, 255, 255, 0.18);
+    }
+
+    .endpoint-node {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .endpoint-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--paper-white);
+    }
+    .endpoint-sub {
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    /* Animasi Halus Kucing Fluffy */
+    @keyframes breathe {
+      0%, 100% { transform: scaleY(1) translateY(0); }
+      50% { transform: scaleY(1.03) translateY(-2px); }
+    }
+    @keyframes wag {
+      0%, 100% { transform: rotate(-10deg); }
+      50% { transform: rotate(16deg); }
+    }
+    @keyframes blink {
+      0%, 92%, 100% { transform: scaleY(1); }
+      95% { transform: scaleY(0.08); }
+    }
+    @keyframes stepL {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+    @keyframes stepR {
+      0%, 100% { transform: translateY(-5px); }
+      50% { transform: translateY(0); }
+    }
+
+    .cat-body-anim { animation: breathe 2.6s ease-in-out infinite; transform-origin: bottom center; }
+    .cat-tail-anim { animation: wag 1.8s ease-in-out infinite; transform-origin: 25px 75px; }
+    .cat-eye-anim { animation: blink 4.2s infinite; transform-origin: center; }
+    .cat-running .paw-left { animation: stepL 0.24s infinite; }
+    .cat-running .paw-right { animation: stepR 0.24s infinite; }
+
+    /* ==========================================================================
+       BENTO WORKSPACE CARD (Terinspirasi langsung dari Kartu Project TD_Alexfolio)
+       ========================================================================== */
+    .bento-workspace {
+      background: var(--paper-white);
+      color: var(--ink-dark);
+      border-radius: 24px;
+      padding: 14px;
+      box-shadow: 0 30px 60px -15px rgba(2, 10, 28, 0.55);
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 14px;
+      min-height: 540px;
+    }
+
+    .bento-pane {
+      border: 1px solid var(--line-dark);
+      border-radius: 16px;
+      padding: 28px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--paper-white);
+    }
+
+    .pane-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-bottom: 18px;
+      margin-bottom: 18px;
+      border-bottom: 1px solid var(--line-dark);
+      gap: 12px;
+    }
+
+    .pane-title {
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--ink-dark);
+    }
+
+    .pane-meta {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-light);
+    }
+
+    /* Clean Numbered Rows (Persis gaya Service List 01, 02, 03 di TD_Alexfolio) */
+    .clean-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .clean-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 13px 10px;
+      border-bottom: 1px solid rgba(7, 25, 54, 0.07);
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--ink-dark);
+      cursor: pointer;
+      transition: background 0.15s, padding-left 0.2s;
+      border-radius: 8px;
+    }
+    .clean-row:hover {
+      background: var(--paper-off);
+      padding-left: 16px;
+    }
+
+    .clean-row-num {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-light);
+      flex-shrink: 0;
+    }
+
+    .code-viewer {
+      flex: 1;
+      overflow: auto;
+      background: var(--paper-off);
+      border-radius: 12px;
+      padding: 20px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--ink-dark);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .tokens-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      margin-top: 20px;
+    }
+
+    /* Archive Cards Grid */
+    .archive-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .archive-card {
+      background: var(--paper-white);
+      color: var(--ink-dark);
+      border-radius: 20px;
+      padding: 12px;
+      box-shadow: 0 20px 45px -15px rgba(2, 10, 28, 0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .archive-img-wrap {
+      height: 200px;
+      border-radius: 14px;
+      border: 1px solid var(--line-dark);
+      overflow: hidden;
+      background: var(--paper-off);
+    }
+    .archive-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top;
+      display: block;
+    }
+
+    .archive-body {
+      border: 1px solid var(--line-dark);
+      border-radius: 12px;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
+      flex: 1;
+    }
+
+    @media (max-width: 960px) {
+      .editorial-split { flex-direction: column; }
+      .sticky-index-col { position: relative; top: 0; width: 100%; }
+      .bento-workspace { grid-template-columns: 1fr; }
+      .white-paper-inner { padding: 28px 20px; }
+      .tokens-grid { grid-template-columns: 1fr; }
+      .cat-stage-card { padding: 24px; }
+      .stage-track { padding: 0 20px; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- 1. 3D PERSPECTIVE CALENDAR GRID + DEPTH-OF-FIELD BLUR -->
+  <div class="bg-stage">
+    <div id="bgGrid3D" class="bg-grid-3d"></div>
+  </div>
+  <div class="dof-vignette"></div>
+
+  <!-- 2. MAIN EDITORIAL PAGE WRAPPER -->
+  <div class="page-wrap" id="top">
+
+    <!-- Minimalist Header (Gaya TD_Alexfolio) -->
+    <header class="top-nav">
+      <a href="#top" class="nav-link" style="font-weight: 600;">© REA Studio</a>
+      <nav class="nav-group">
+        <a href="#extractor" class="nav-link">Extractor</a>
+        <a href="#workspace" class="nav-link">Workspace</a>
+        <a href="#archive" class="nav-link">Archive</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================================= -->
+    <!-- SECTION 01 // EXTRACTOR                                                 -->
+    <!-- ======================================================================= -->
+    <div class="section-bar" id="extractor">
+      <div class="section-bar-line"></div>
+      <div class="section-bar-inner">
+        <span class="section-bar-slash">//</span>
+        <span>Extractor</span>
+      </div>
+    </div>
+
+    <section class="section-container">
+      <div class="editorial-split">
+        <!-- Kiri: Sticky Giant Outline Number -->
+        <div class="sticky-index-col">
+          <span class="giant-outline-num">01</span>
+        </div>
+
+        <!-- Kanan: 3D White Paper Card + Fluffy Cat Courier Stage -->
+        <div class="content-col">
+          <div
+            data-tilt
+            data-tilt-max="2.5"
+            data-tilt-speed="500"
+            class="white-paper-shell"
+          >
+            <div class="white-paper-inner">
+              <div class="pin-3d"></div>
+
+              <p style="font-size: 14px; font-weight: 600; color: #0d5bd9; margin-bottom: 12px;">
+                (Web Cloner &amp; Architecture Inspector)
+              </p>
+              <h1 class="display-title">
+                Extract every element<br />from any domain.
+              </h1>
+              <p class="editorial-lead" style="margin-top: 20px;">
+                Masukkan nama domain untuk mengunduh struktur HTML, stylesheet, script, gambar resolusi penuh, dan design tokens secara utuh ke dalam satu arsip bersih.
+              </p>
+
+              <!-- Form Input Bersih -->
+              <div class="input-row">
+                <input
+                  id="domainInput"
+                  type="text"
+                  class="clean-input"
+                  placeholder="example.com atau td-alexfolio.framer.website"
+                  onkeydown="if(event.key==='Enter') startLiveExtraction()"
+                />
+                <select id="viewportSelect" class="clean-select">
+                  <option value="desktop">Desktop (1440px)</option>
+                  <option value="tablet">Tablet (834px)</option>
+                  <option value="mobile">Mobile (390px)</option>
+                </select>
+                <button id="extractBtn" onclick="startLiveExtraction()" class="pill-btn">
+                  Extract Website
+                </button>
+              </div>
+
+              <!-- Minimal Options -->
+              <div class="Minimal-options">
+                <label class="toggle-label">
+                  <input id="removeWatermarks" type="checkbox" checked />
+                  <span>Remove platform badges (Framer / Webflow)</span>
+                </label>
+                <label class="toggle-label">
+                  <input id="runReaAnalysis" type="checkbox" checked />
+                  <span>Include deep DOM &amp; bundle inspection</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fluffy White Cat Courier Stage -->
+          <div class="cat-stage-card">
+            <div class="cat-stage-header">
+              <div>
+                <p style="font-size: 16px; font-weight: 600;" id="catSpeechText">
+                  Menunggu domain tujuan untuk mulai mengangkut file.
+                </p>
+                <p style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 2px;" id="catSubStatus">
+                  Idle • 0 file diangkut
+                </p>
+              </div>
+              <div style="text-align: right;">
+                <span id="progressPercent" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em;">0%</span>
+              </div>
+            </div>
+
+            <div class="stage-track" id="stageTrack">
+              <div class="track-line"></div>
+
+              <!-- Titik Asal: Domain -->
+              <div class="endpoint-node">
+                <span class="endpoint-title" id="sourceNodeLabel">Source Domain</span>
+                <span class="endpoint-sub">Remote Host</span>
+              </div>
+
+              <!-- Kucing Putih Fluffy 2D -->
+              <div id="catCourier" style="position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; flex-direction: column; align-items: center;">
+                <div
+                  id="carriedFilePill"
+                  style="display: none; margin-bottom: -4px; padding: 3px 10px; border-radius: 99px; background: #ffffff; color: #071936; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.25);"
+                >
+                  index.html
+                </div>
+
+                <svg id="fluffyCatSvg" width="108" height="88" viewBox="0 0 140 115" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <ellipse cx="70" cy="106" rx="36" ry="5" fill="rgba(2, 10, 28, 0.35)" />
+                  <g class="cat-tail-anim">
+                    <path d="M34 80 C10 72, 4 44, 22 36 C36 30, 44 50, 38 68 Z" fill="#FFFFFF" />
+                    <circle cx="17" cy="48" r="9" fill="#FFFFFF" />
+                    <circle cx="24" cy="39" r="8" fill="#FFFFFF" />
+                  </g>
+                  <g class="paw-left">
+                    <ellipse cx="50" cy="98" rx="9" ry="6.5" fill="#FFFFFF" />
+                    <ellipse cx="50" cy="100" rx="3.5" ry="2" fill="#F472B6" />
+                  </g>
+                  <g class="paw-right">
+                    <ellipse cx="88" cy="98" rx="9" ry="6.5" fill="#FFFFFF" />
+                    <ellipse cx="88" cy="100" rx="3.5" ry="2" fill="#F472B6" />
+                  </g>
+                  <g class="cat-body-anim">
+                    <ellipse cx="70" cy="76" rx="34" ry="24" fill="#FFFFFF" />
+                    <circle cx="44" cy="74" r="14" fill="#FFFFFF" />
+                    <circle cx="96" cy="74" r="14" fill="#FFFFFF" />
+                    <circle cx="56" cy="90" r="12" fill="#FFFFFF" />
+                    <circle cx="84" cy="90" r="12" fill="#FFFFFF" />
+                    <path d="M44 42 L38 16 L62 30 Z" fill="#FFFFFF" />
+                    <path d="M45 38 L42 22 L57 31 Z" fill="#FBCFE8" />
+                    <path d="M96 42 L102 16 L78 30 Z" fill="#FFFFFF" />
+                    <path d="M95 38 L98 22 L83 31 Z" fill="#FBCFE8" />
+                    <ellipse cx="70" cy="48" rx="30" ry="24" fill="#FFFFFF" />
+                    <circle cx="42" cy="52" r="11" fill="#FFFFFF" />
+                    <circle cx="98" cy="52" r="11" fill="#FFFFFF" />
+                    <circle cx="65" cy="24" r="6" fill="#FFFFFF" />
+                    <circle cx="73" cy="23" r="7" fill="#FFFFFF" />
+                    <g class="cat-eye-anim">
+                      <circle cx="57" cy="47" r="5" fill="#071936" />
+                      <circle cx="55.5" cy="45" r="1.8" fill="#FFFFFF" />
+                      <circle cx="83" cy="47" r="5" fill="#071936" />
+                      <circle cx="81.5" cy="45" r="1.8" fill="#FFFFFF" />
+                    </g>
+                    <ellipse cx="48" cy="54" rx="4.5" ry="2.5" fill="#F9A8D4" opacity="0.6" />
+                    <ellipse cx="92" cy="54" rx="4.5" ry="2.5" fill="#F9A8D4" opacity="0.6" />
+                    <polygon points="70,51 67,55 73,55" fill="#F472B6" />
+                    <path d="M64 57 Q67 60 70 57 Q73 60 76 57" stroke="#071936" stroke-width="1.8" stroke-linecap="round" fill="none" />
+                  </g>
+                </svg>
+              </div>
+
+              <!-- Titik Tujuan: Local Folder -->
+              <div class="endpoint-node" style="text-align: right;">
+                <span class="endpoint-title">Local Archive</span>
+                <span class="endpoint-sub" id="vaultCountLabel">0 files stored</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- SECTION 02 // WORKSPACE (FOLDER EXPLORER, INSPECTOR & LIVE LOG)         -->
+    <!-- ======================================================================= -->
+    <div class="section-bar" id="workspace">
+      <div class="section-bar-line"></div>
+      <div class="section-bar-inner">
+        <span class="section-bar-slash">//</span>
+        <span>Workspace</span>
+      </div>
+    </div>
+
+    <section class="section-container">
+      <div class="editorial-split">
+        <div class="sticky-index-col">
+          <span class="giant-outline-num">02</span>
+        </div>
+
+        <div class="content-col">
+          <!-- Header & Action Buttons -->
+          <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px;">
+            <div>
+              <h2 style="font-size: clamp(32px, 4vw, 54px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05;">
+                Folder Structure &amp;<br />Live File Inspector
+              </h2>
+            </div>
+            <div id="exportActions" style="display: none; gap: 12px;">
+              <a id="previewLinkBtn" target="_blank" class="pill-btn-outline" style="background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.25);">
+                Open Live Clone
+              </a>
+              <a id="zipDownloadBtn" class="pill-btn-outline" style="background: #ffffff; color: #071936; border-color: #ffffff;">
+                Download ZIP Archive
+              </a>
+            </div>
+          </div>
+
+          <!-- Bento Split Card: Kiri (File Inspector), Kanan (Folder Tree & Stream Log) -->
+          <div class="bento-workspace">
+            <!-- Kiri (60%): Code & Image Previewer -->
+            <div class="bento-pane">
+              <div class="pane-header">
+                <span class="pane-title" id="inspectorFileTitle">File Preview</span>
+                <button
+                  id="copyContentBtn"
+                  onclick="copyInspectorCode()"
+                  class="pill-btn-outline"
+                  style="height: 32px; padding: 0 14px; font-size: 12px; display: none;"
+                >
+                  Copy Code
+                </button>
+              </div>
+              <div id="inspectorBody" class="code-viewer">
+                Pilih file dari daftar folder di sebelah kanan untuk melihat struktur kode atau gambar secara langsung.
+              </div>
+            </div>
+
+            <!-- Kanan (40%): Folder Explorer & Activity Stream -->
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- Atas: Interactive Folder Tree -->
+              <div class="bento-pane" style="flex: 1;">
+                <div class="pane-header">
+                  <span class="pane-title">Extracted Files</span>
+                  <span class="pane-meta" id="fileCountMeta">0 items</span>
+                </div>
+                <div id="folderListBox" class="clean-list">
+                  <div style="color: var(--ink-light); font-size: 14px; padding: 24px 0;">
+                    Folder masih kosong.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Bawah: Minimalist Process Log -->
+              <div class="bento-pane" style="height: 210px;">
+                <div class="pane-header">
+                  <span class="pane-title">Process Stream</span>
+                  <span class="pane-meta" id="streamCountMeta">01</span>
+                </div>
+                <div id="streamLogBox" class="clean-list">
+                  <div class="clean-row" style="cursor: default;">
+                    <span>Ready for domain input</span>
+                    <span class="clean-row-num">01</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Design Tokens Bar (Muncul otomatis saat ekstraksi selesai) -->
+          <div id="tokensCard" class="white-paper-shell" style="display: none;">
+            <div class="white-paper-inner" style="padding: 36px;">
+              <div class="pane-header">
+                <span class="pane-title">Extracted Design Tokens</span>
+                <button onclick="copyTailwindTokens()" class="pill-btn-outline" style="height: 36px; padding: 0 18px; font-size: 13px;">
+                  Copy Tailwind Tokens
+                </button>
+              </div>
+              <div class="tokens-grid">
+                <div>
+                  <p class="pane-meta" style="margin-bottom: 12px;">Color Palette</p>
+                  <div id="colorsWrap" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+                <div>
+                  <p class="pane-meta" style="margin-bottom: 12px;">Typography</p>
+                  <div id="fontsWrap" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- SECTION 03 // ARCHIVE                                                   -->
+    <!-- ======================================================================= -->
+    <div class="section-bar" id="archive">
+      <div class="section-bar-line"></div>
+      <div class="section-bar-inner">
+        <span class="section-bar-slash">//</span>
+        <span>Archive</span>
+      </div>
+    </div>
+
+    <section class="section-container">
+      <div class="editorial-split">
+        <div class="sticky-index-col">
+          <span class="giant-outline-num">03</span>
+        </div>
+
+        <div class="content-col">
+          <div style="display: flex; align-items: flex-end; justify-content: space-between;">
+            <h2 style="font-size: clamp(32px, 4vw, 54px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05;">
+              Recent Extractions
+            </h2>
+          </div>
+
+          <div id="historyGrid" class="archive-grid"></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!-- SCRIPTS                                                                   -->
+  <!-- ========================================================================= -->
+  <script>
+    let currentJobId = null;
+    let currentMetadata = null;
+    let eventSource = null;
+    let streamStep = 1;
+    let carriedFilesCount = 0;
+    let moveRight = true;
+    let activeCodeText = '';
+
+    // 1. Lenis Smooth Scrolling
+    const lenis = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+    });
+    function raf(time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+
+    // Smooth anchor navigation with Lenis
+    document.querySelectorAll('.nav-link[href^="#"]').forEach((link) => {
+      link.addEventListener('click', (e) => {
+        const target = link.getAttribute('href');
+        if (target && document.querySelector(target)) {
+          e.preventDefault();
+          lenis.scrollTo(target, { offset: 0 });
+        }
+      });
+    });
+
+    // 2. Render 3D Calendar Background Grid
+    function initBackgroundGrid() {
+      const grid = document.getElementById('bgGrid3D');
+      let cells = '';
+      for (let i = 1; i <= 20; i++) {
+        const day = ((i + 18) % 30) + 1;
+        cells += `
+          <div class="bg-cell">
+            <span class="bg-cell-num">${day < 10 ? '0' + day : day}</span>
+          </div>
+        `;
+      }
+      grid.innerHTML = cells;
+
+      window.addEventListener('mousemove', (e) => {
+        const x = (e.clientX / window.innerWidth - 0.5) * 6;
+        const y = (e.clientY / window.innerHeight - 0.5) * 6;
+        grid.style.transform = `rotateX(${26 - y}deg) rotateZ(${-12 + x}deg) translateZ(-100px)`;
+      });
+    }
+
+    function stripEmojis(str) {
+      return String(str || '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\s+/g, ' ').trim();
+    }
+
+    // 3. Animasi Kucing Fluffy Mengangkut File
+    function triggerCatCourier(fileName, speechText) {
+      const cat = document.getElementById('catCourier');
+      const svg = document.getElementById('fluffyCatSvg');
+      const pill = document.getElementById('carriedFilePill');
+      const track = document.getElementById('stageTrack');
+
+      cat.classList.add('cat-running');
+      pill.style.display = 'inline-block';
+      pill.textContent = fileName;
+
+      if (speechText) {
+        document.getElementById('catSpeechText').textContent = stripEmojis(speechText);
+      }
+
+      carriedFilesCount++;
+      const numFormatted = carriedFilesCount < 10 ? `0${carriedFilesCount}` : `${carriedFilesCount}`;
+      document.getElementById('vaultCountLabel').textContent = `${numFormatted} files stored`;
+      document.getElementById('catSubStatus').textContent = `Active • Mengangkut ${fileName}`;
+
+      const trackWidth = track ? track.clientWidth : 600;
+      const maxOffset = Math.max(36, Math.min(150, Math.floor((trackWidth - 240) / 2)));
+      const offset = moveRight ? maxOffset : -maxOffset;
+      moveRight = !moveRight;
+
+      gsap.to(cat, {
+        x: offset,
+        duration: 0.5,
+        ease: 'power2.out',
+        onComplete: () => {
+          gsap.fromTo(svg, { y: -10 }, { y: 0, duration: 0.25, ease: 'bounce.out' });
+        },
+      });
+    }
+
+    // 4. Tambah Baris ke Process Stream (Gaya Numbered List 01, 02 TD_Alexfolio)
+    function addStreamRow(text) {
+      const box = document.getElementById('streamLogBox');
+      if (streamStep === 1) box.innerHTML = '';
+
+      const numStr = streamStep < 10 ? `0${streamStep}` : `${streamStep}`;
+      document.getElementById('streamCountMeta').textContent = numStr;
+      streamStep++;
+
+      const row = document.createElement('div');
+      row.className = 'clean-row';
+      row.style.cursor = 'default';
+
+      const textSpan = document.createElement('span');
+      textSpan.style.overflow = 'hidden';
+      textSpan.style.textOverflow = 'ellipsis';
+      textSpan.style.whiteSpace = 'nowrap';
+      textSpan.textContent = stripEmojis(text);
+
+      const numSpan = document.createElement('span');
+      numSpan.className = 'clean-row-num';
+      numSpan.textContent = numStr;
+
+      row.appendChild(textSpan);
+      row.appendChild(numSpan);
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // 5. Tambah File secara Live ke Daftar Folder
+    function addLiveFolderRow(folderPath, size) {
+      const box = document.getElementById('folderListBox');
+      if (carriedFilesCount === 1) box.innerHTML = '';
+
+      document.getElementById('fileCountMeta').textContent = `${carriedFilesCount} files`;
+      const kb = size ? `${(size / 1024).toFixed(1)} KB` : '';
+
+      const row = document.createElement('div');
+      row.className = 'clean-row';
+
+      const pathSpan = document.createElement('span');
+      pathSpan.style.overflow = 'hidden';
+      pathSpan.style.textOverflow = 'ellipsis';
+      pathSpan.style.whiteSpace = 'nowrap';
+      pathSpan.textContent = folderPath;
+
+      const sizeSpan = document.createElement('span');
+      sizeSpan.className = 'clean-row-num';
+      sizeSpan.textContent = kb;
+
+      row.appendChild(pathSpan);
+      row.appendChild(sizeSpan);
+      row.onclick = () => {
+        if (currentJobId) openFilePreview(currentJobId, folderPath);
+      };
+      box.appendChild(row);
+      box.scrollTop = box.scrollHeight;
+    }
+
+    // 6. Render Pohon Folder Lengkap
+    function renderFolderTree(jobId, treeNodes) {
+      currentJobId = jobId;
+      const box = document.getElementById('folderListBox');
+      box.innerHTML = '';
+      let totalFiles = 0;
+
+      function walk(nodes, depth = 0) {
+        nodes.forEach((node) => {
+          const row = document.createElement('div');
+          row.className = 'clean-row';
+          row.style.paddingLeft = `${depth * 16 + 10}px`;
+
+          if (node.type === 'folder') {
+            row.style.fontWeight = '700';
+            row.style.cursor = 'default';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = `/${node.name}`;
+            const dirSpan = document.createElement('span');
+            dirSpan.className = 'clean-row-num';
+            dirSpan.textContent = 'DIR';
+
+            row.appendChild(nameSpan);
+            row.appendChild(dirSpan);
+            box.appendChild(row);
+            if (node.children) walk(node.children, depth + 1);
+          } else {
+            totalFiles++;
+            const kb = `${(node.size / 1024).toFixed(1)} KB`;
+
+            const nameSpan = document.createElement('span');
+            nameSpan.style.overflow = 'hidden';
+            nameSpan.style.textOverflow = 'ellipsis';
+            nameSpan.style.whiteSpace = 'nowrap';
+            nameSpan.textContent = node.name;
+
+            const sizeSpan = document.createElement('span');
+            sizeSpan.className = 'clean-row-num';
+            sizeSpan.textContent = kb;
+
+            row.appendChild(nameSpan);
+            row.appendChild(sizeSpan);
+            row.onclick = () => openFilePreview(jobId, node.path);
+            box.appendChild(row);
+          }
+        });
+      }
+
+      walk(treeNodes);
+      document.getElementById('fileCountMeta').textContent = `${totalFiles} files`;
+    }
+
+    // 7. Buka & Preview Isi File
+    async function openFilePreview(jobId, filePath) {
+      const titleEl = document.getElementById('inspectorFileTitle');
+      const bodyEl = document.getElementById('inspectorBody');
+      const copyBtn = document.getElementById('copyContentBtn');
+
+      titleEl.textContent = filePath;
+      bodyEl.textContent = 'Loading file content...';
+
+      try {
+        const res = await fetch(`/api/file-content?jobId=${encodeURIComponent(jobId)}&filePath=${encodeURIComponent(filePath)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to read file');
+
+        if (data.type === 'image') {
+          copyBtn.style.display = 'none';
+          bodyEl.innerHTML = '';
+          const wrap = document.createElement('div');
+          wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 24px;';
+          const img = document.createElement('img');
+          img.src = data.url;
+          img.style.cssText = 'max-height: 360px; max-width: 100%; border-radius: 12px; object-fit: contain;';
+          wrap.appendChild(img);
+          bodyEl.appendChild(wrap);
+        } else {
+          copyBtn.style.display = 'inline-flex';
+          activeCodeText = data.content;
+          bodyEl.textContent = data.content;
+        }
+      } catch (err) {
+        bodyEl.textContent = `Error: ${err.message}`;
+      }
+    }
+
+    function copyInspectorCode() {
+      if (!activeCodeText) return;
+      navigator.clipboard.writeText(activeCodeText);
+      const btn = document.getElementById('copyContentBtn');
+      btn.textContent = 'Copied';
+      setTimeout(() => (btn.textContent = 'Copy Code'), 1400);
+    }
+
+    // 8. Mulai Proses Ekstraksi (SSE)
+    function startLiveExtraction() {
+      const domain = document.getElementById('domainInput').value.trim();
+      if (!domain) return;
+
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+      }
+
+      const removeWatermarks = document.getElementById('removeWatermarks').checked;
+      const runReaAnalysis = document.getElementById('runReaAnalysis').checked;
+      const viewport = document.getElementById('viewportSelect').value;
+
+      streamStep = 1;
+      carriedFilesCount = 0;
+      currentJobId = null;
+      document.getElementById('folderListBox').innerHTML = '';
+      document.getElementById('streamLogBox').innerHTML = '';
+      document.getElementById('vaultCountLabel').textContent = '00 files stored';
+      document.getElementById('progressPercent').textContent = '5%';
+      document.getElementById('sourceNodeLabel').textContent = domain;
+      document.getElementById('catSubStatus').textContent = 'Active • Menghubungi domain...';
+      document.getElementById('extractBtn').disabled = true;
+
+      const params = new URLSearchParams({ domain, removeWatermarks, runReaAnalysis, viewport });
+      eventSource = new EventSource(`/api/extract-stream?${params.toString()}`);
+
+      function abortStream(errorText) {
+        if (eventSource) {
+          eventSource.close();
+          eventSource = null;
+        }
+        addStreamRow(errorText);
+        document.getElementById('catCourier').classList.remove('cat-running');
+        document.getElementById('carriedFilePill').style.display = 'none';
+        document.getElementById('catSubStatus').textContent = 'Stopped';
+        document.getElementById('extractBtn').disabled = false;
+      }
+
+      eventSource.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+
+        if (data.jobId) {
+          currentJobId = data.jobId;
+        }
+
+        if (data.progress) {
+          document.getElementById('progressPercent').textContent = `${data.progress}%`;
+        }
+
+        if (data.type === 'log') {
+          addStreamRow(data.message);
+          if (data.catSpeech) {
+            document.getElementById('catSpeechText').textContent = stripEmojis(data.catSpeech);
+          }
+        } else if (data.type === 'catCarry') {
+          triggerCatCourier(data.fileName, `Mengangkut ${data.fileName} ke dalam folder lokal.`);
+          addLiveFolderRow(data.folderPath, data.size);
+        } else if (data.type === 'complete') {
+          eventSource.close();
+          eventSource = null;
+          handleComplete(data.metadata, data.folderTree);
+        } else if (data.type === 'error') {
+          abortStream(`Error: ${data.message}`);
+        }
+      };
+
+      eventSource.onerror = () => {
+        abortStream('Connection closed before completion.');
+      };
+    }
+
+    function handleComplete(metadata, folderTree) {
+      currentMetadata = metadata;
+      currentJobId = metadata.jobId;
+
+      const cat = document.getElementById('catCourier');
+      cat.classList.remove('cat-running');
+      gsap.to(cat, { x: 0, duration: 0.45, ease: 'power2.out' });
+      document.getElementById('carriedFilePill').style.display = 'none';
+      document.getElementById('catSpeechText').textContent = `Ekstraksi ${metadata.domain} selesai.`;
+      document.getElementById('catSubStatus').textContent = `Complete • ${metadata.stats.assetsDownloaded} aset tersimpan`;
+      document.getElementById('extractBtn').disabled = false;
+
+      const actions = document.getElementById('exportActions');
+      actions.style.display = 'flex';
+      document.getElementById('previewLinkBtn').href = metadata.previewUrl;
+      document.getElementById('zipDownloadBtn').href = metadata.zipUrl;
+
+      renderFolderTree(metadata.jobId, folderTree);
+      openFilePreview(metadata.jobId, 'index.html');
+      renderTokens(metadata);
+      loadArchive();
+    }
+
+    function renderTokens(metadata) {
+      const card = document.getElementById('tokensCard');
+      card.style.display = 'block';
+
+      const colorsWrap = document.getElementById('colorsWrap');
+      colorsWrap.innerHTML = '';
+      (metadata.stats.colors || []).forEach((color) => {
+        const chip = document.createElement('button');
+        chip.className = 'pill-btn-outline';
+        chip.style.height = '34px';
+        chip.style.padding = '0 14px';
+        chip.style.fontSize = '12px';
+        chip.style.gap = '8px';
+
+        const dot = document.createElement('span');
+        dot.style.cssText = 'width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,0.15);';
+        dot.style.background = color;
+
+        const label = document.createElement('span');
+        label.textContent = color;
+
+        chip.appendChild(dot);
+        chip.appendChild(label);
+        chip.onclick = () => navigator.clipboard.writeText(color);
+        colorsWrap.appendChild(chip);
+      });
+
+      const fontsWrap = document.getElementById('fontsWrap');
+      fontsWrap.innerHTML = '';
+      (metadata.stats.fonts || []).forEach((font) => {
+        const chip = document.createElement('span');
+        chip.className = 'pill-btn-outline';
+        chip.style.height = '34px';
+        chip.style.padding = '0 16px';
+        chip.style.fontSize = '12px';
+        chip.textContent = font;
+        fontsWrap.appendChild(chip);
+      });
+    }
+
+    function copyTailwindTokens() {
+      if (!currentMetadata) return;
+      const cfg = JSON.stringify(
+        {
+          theme: {
+            extend: {
+              fontFamily: { primary: currentMetadata.stats.fonts },
+              colors: Object.fromEntries((currentMetadata.stats.colors || []).slice(0, 10).map((c, i) => [`token-${i + 1}`, c])),
+            },
+          },
+        },
+        null,
+        2
+      );
+      navigator.clipboard.writeText(cfg);
+    }
+
+    // 9. Load Archive Cards (Gaya Project Card TD_Alexfolio)
+    async function loadArchive() {
+      try {
+        const res = await fetch('/api/history');
+        const items = await res.json();
+        const grid = document.getElementById('historyGrid');
+        grid.innerHTML = '';
+
+        items.forEach((item) => {
+          const year = new Date(item.createdAt).getFullYear();
+          const card = document.createElement('div');
+          card.className = 'archive-card';
+
+          const imgWrap = document.createElement('div');
+          imgWrap.className = 'archive-img-wrap';
+          const img = document.createElement('img');
+          img.src = item.screenshotUrl;
+          img.alt = item.domain || '';
+          img.onerror = () => {
+            img.style.display = 'none';
+          };
+          imgWrap.appendChild(img);
+
+          const body = document.createElement('div');
+          body.className = 'archive-body';
+
+          const head = document.createElement('div');
+          const metaP = document.createElement('p');
+          metaP.style.cssText = 'font-size: 13px; color: var(--ink-light); margin-bottom: 8px;';
+          metaP.textContent = `(${year}) • ${item.platform}`;
+
+          const titleH3 = document.createElement('h3');
+          titleH3.style.cssText = 'font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;';
+          titleH3.textContent = item.title || item.domain;
+
+          const domainP = document.createElement('p');
+          domainP.style.cssText = 'font-size: 14px; color: var(--ink-mid); margin-top: 8px;';
+          domainP.textContent = item.domain;
+
+          head.appendChild(metaP);
+          head.appendChild(titleH3);
+          head.appendChild(domainP);
+
+          const footer = document.createElement('div');
+          footer.style.cssText = 'display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line-dark);';
+
+          const statRow = document.createElement('div');
+          statRow.style.cssText = 'display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-mid);';
+          const statLabel = document.createElement('span');
+          statLabel.textContent = 'Assets Stored';
+          const statVal = document.createElement('span');
+          statVal.textContent = `${item.stats?.assetsDownloaded || 0} files`;
+          statRow.appendChild(statLabel);
+          statRow.appendChild(statVal);
+
+          const btnRow = document.createElement('div');
+          btnRow.style.cssText = 'display: flex; gap: 8px; margin-top: 10px;';
+
+          const inspectBtn = document.createElement('button');
+          inspectBtn.className = 'pill-btn';
+          inspectBtn.style.cssText = 'flex:1; height: 42px; padding: 0 18px; font-size: 13px;';
+          inspectBtn.textContent = 'Inspect Folder';
+          inspectBtn.onclick = () => openArchiveFolder(item);
+
+          const previewA = document.createElement('a');
+          previewA.href = item.previewUrl;
+          previewA.target = '_blank';
+          previewA.className = 'pill-btn-outline';
+          previewA.style.cssText = 'height: 42px; padding: 0 16px; font-size: 13px;';
+          previewA.textContent = 'Preview';
+
+          const zipA = document.createElement('a');
+          zipA.href = item.zipUrl;
+          zipA.className = 'pill-btn-outline';
+          zipA.style.cssText = 'height: 42px; padding: 0 16px; font-size: 13px;';
+          zipA.textContent = 'ZIP';
+
+          btnRow.appendChild(inspectBtn);
+          btnRow.appendChild(previewA);
+          btnRow.appendChild(zipA);
+
+          footer.appendChild(statRow);
+          footer.appendChild(btnRow);
+
+          body.appendChild(head);
+          body.appendChild(footer);
+
+          card.appendChild(imgWrap);
+          card.appendChild(body);
+          grid.appendChild(card);
+        });
+      } catch {}
+    }
+
+    async function openArchiveFolder(itemOrId) {
+      const item = typeof itemOrId === 'string' ? { jobId: itemOrId } : itemOrId;
+      const jobId = item.jobId;
+      const res = await fetch(`/api/files/${encodeURIComponent(jobId)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      renderFolderTree(jobId, data.tree);
+      openFilePreview(jobId, 'index.html');
+
+      if (item.previewUrl && item.zipUrl) {
+        currentMetadata = item;
+        const actions = document.getElementById('exportActions');
+        actions.style.display = 'flex';
+        document.getElementById('previewLinkBtn').href = item.previewUrl;
+        document.getElementById('zipDownloadBtn').href = item.zipUrl;
+        if (item.stats) renderTokens(item);
+      }
+
+      lenis.scrollTo('#workspace', { offset: -20 });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      initBackgroundGrid();
+      loadArchive();
+    });
+  </script>
+</body>
+</html>

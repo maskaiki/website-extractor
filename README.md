@@ -27,22 +27,78 @@
 ## Getting Started
 
 ### 1. Prerequisites
+
 Ensure you have **Node.js (v22.19+ or v24+)** installed on your machine.
 
 *(Optional)* To enable deep CDP & bundle reverse engineering via `morluto/rea`, install `rea-agents` globally:
+
 ```bash
 npm install -g rea-agents@latest
+```
 
-#2. Installation
-Clone this repository and install the dependencies:
-Bash
-git clone https://github.com/YOUR_USERNAME/website-extractor.git
+### 2. Installation & Run
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/maskaiki/website-extractor.git
 cd website-extractor
+
+# 2. Install dependencies
 npm install
+
+# 3. Install Chromium for Playwright
 npx playwright install chromium
-3. Run the Server
-Bash
-node server.js
-Open http://localhost:3000 in your browser.
 
+# 4. Start the server
+npm start
+```
 
+Open your browser at `http://localhost:3000`.
+
+---
+
+## Project Structure
+
+```text
+├── server.js          # Express backend, Playwright Stealth + REA CDP & SSE stream
+├── public/
+│   └── index.html     # Editorial 3D UI, Fluffy Cat Courier & Interactive Inspector
+├── exports/           # Generated extraction folders & .zip archives (gitignored)
+├── package.json
+└── LICENSE
+```
+
+## Output Structure (per extraction job)
+
+```text
+exports/<hostname>_<timestamp>/
+├── index.html                               # Rewritten & watermark-cleaned HTML
+├── preview.png                              # Viewport screenshot
+├── metadata.json                            # Job summary, platform, stats & tokens
+├── assets/
+│   ├── css/style_N.css                      # Stylesheets (with local url() rewrites)
+│   ├── js/script_N.js                       # Downloaded scripts
+│   └── images/img_N.*                       # Downloaded images & CSS assets
+└── rea-blueprint/
+    ├── design-tokens-and-elements.json      # Colors, fonts & semantic sections
+    ├── rea-cdp-evidence.json                # Passive CDP page inspection (morluto/rea)
+    └── rea-bundle-analysis.json             # Bundle & source-map analysis (morluto/rea)
+```
+
+---
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+|---|---|---|
+| `/api/extract-stream` | `GET` (SSE) | Stream extraction progress (`domain`, `removeWatermarks`, `runReaAnalysis`, `viewport`) |
+| `/api/files/:jobId` | `GET` | Return recursive folder tree for a completed job |
+| `/api/file-content` | `GET` | Preview code or image content (`jobId`, `filePath`) |
+| `/api/history` | `GET` | List up to 12 recent extractions |
+| `/downloads/<jobId>/...` | `GET` | Serve static cloned pages, screenshots, and `.zip` archives |
+
+---
+
+## License
+
+[MIT License](LICENSE)
