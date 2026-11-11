@@ -3,44 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Web Extractor</title>
+  <title>Website Extractor — 3D Engine &amp; Inspector</title>
 
-  <!-- STRICT SINGLE FONT FAMILY: Plus Jakarta Sans (Editorial Display & UI) -->
+  <!-- STRICT SINGLE FONT FAMILY: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-  <!-- Lenis Smooth Scroll, GSAP, Vanilla-Tilt -->
+  <!-- Lenis Smooth Scroll, GSAP, Vanilla-Tilt 3D -->
   <script src="https://unpkg.com/@studio-freight/lenis@1.0.42/dist/lenis.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
 
   <style>
-    /* ==========================================================================
-       STRICT DESIGN TOKENS (Diadaptasi dari TD_Alexfolio + Cobalt Reference)
-       ========================================================================== */
     :root {
       --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-
-      /* Cobalt Blue & Crisp Paper Palette */
-      --bg-cobalt-deep: #041d42;
-      --bg-cobalt-mid: #083b82;
-      --bg-cobalt-accent: #0d5bd9;
-      --accent-sky: #38bdf8;
+      --cobalt-950: #021024;
+      --cobalt-900: #052659;
+      --cobalt-700: #0a48a8;
+      --cobalt-500: #1d7afc;
+      --cyan-400: #38bdf8;
 
       --paper-white: #ffffff;
       --paper-off: #f8fafc;
-      --paper-muted: #e2e8f0;
-
       --ink-dark: #071936;
       --ink-mid: #475569;
       --ink-light: #94a3b8;
 
-      --line-light: rgba(255, 255, 255, 0.14);
-      --line-dark: rgba(7, 25, 54, 0.12);
+      --line-light: rgba(255, 255, 255, 0.16);
+      --line-dark: rgba(7, 25, 54, 0.11);
     }
 
-    /* STRICT TYPOGRAPHY RULE: Satu Font untuk SEMUA Elemen Tanpa Terkecuali */
+    /* STRICT SINGLE FONT RULE */
     *, *::before, *::after, body, input, select, button, textarea, pre, code, span, div, p, h1, h2, h3, h4 {
       box-sizing: border-box;
       font-family: var(--font-main) !important;
@@ -54,14 +48,14 @@
     .lenis.lenis-smooth { scroll-behavior: auto !important; }
 
     body {
-      background: radial-gradient(circle at 50% 18%, #0d5bd9 0%, #062f6b 52%, #031530 100%);
+      background: radial-gradient(circle at 50% 15%, #0e5fd8 0%, #062f6b 50%, #021024 100%);
       color: var(--paper-white);
       overflow-x: hidden;
       min-height: 100vh;
     }
 
     /* ==========================================================================
-       3D PERSPECTIVE BACKGROUND & SOFT DEPTH-OF-FIELD BLUR
+       3D BACKGROUND GRID, FLOATING 3D ORNAMENTS & DEPTH OF FIELD BLUR
        ========================================================================== */
     .bg-stage {
       position: fixed;
@@ -74,32 +68,64 @@
 
     .bg-grid-3d {
       position: absolute;
-      width: 140vw;
-      height: 140vh;
-      left: -20vw;
-      top: -20vh;
-      transform: rotateX(26deg) rotateZ(-12deg) translateZ(-100px);
+      width: 145vw;
+      height: 145vh;
+      left: -22vw;
+      top: -22vh;
+      transform: rotateX(26deg) rotateZ(-12deg) translateZ(-90px);
       display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 1px;
-      background: rgba(255, 255, 255, 0.1);
-      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      grid-template-columns: repeat(6, 1fr);
+      gap: 1.5px;
+      background: rgba(255, 255, 255, 0.12);
+      transition: transform 0.3s ease-out;
     }
 
     .bg-cell {
-      background: linear-gradient(155deg, rgba(11, 68, 158, 0.82), rgba(4, 25, 60, 0.94));
-      padding: 36px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      background: linear-gradient(155deg, rgba(10, 72, 168, 0.84), rgba(3, 20, 48, 0.94));
+      padding: 32px;
     }
 
     .bg-cell-num {
-      font-size: 88px;
-      font-weight: 700;
+      font-size: 76px;
+      font-weight: 800;
       letter-spacing: -0.04em;
-      line-height: 0.9;
       color: rgba(255, 255, 255, 0.06);
+      line-height: 1;
+    }
+
+    /* Hiasan 3D Melayang di Latar (Floating 3D Prisms & Rings) */
+    .floating-3d-ornament {
+      position: fixed;
+      pointer-events: none;
+      z-index: 2;
+      transform-style: preserve-3d;
+    }
+    .ornament-ring-1 {
+      top: 12%;
+      right: 4%;
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      border: 14px solid rgba(56, 189, 248, 0.18);
+      box-shadow: 0 20px 40px rgba(2, 16, 36, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.2);
+      animation: float3D 7s ease-in-out infinite;
+    }
+    .ornament-cube-2 {
+      bottom: 10%;
+      left: 3%;
+      width: 74px;
+      height: 74px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.22), rgba(56, 189, 248, 0.08));
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 25px 45px rgba(2, 16, 36, 0.6);
+      animation: float3D 9s ease-in-out infinite reverse;
+    }
+
+    @keyframes float3D {
+      0%, 100% { transform: translateY(0px) rotateX(18deg) rotateY(-18deg) rotateZ(0deg); }
+      50% { transform: translateY(-22px) rotateX(34deg) rotateY(18deg) rotateZ(12deg); }
     }
 
     .dof-vignette {
@@ -107,515 +133,581 @@
       inset: 0;
       pointer-events: none;
       z-index: 1;
-      backdrop-filter: blur(7px);
-      -webkit-mask-image: radial-gradient(circle at 50% 42%, transparent 42%, black 95%);
-      mask-image: radial-gradient(circle at 50% 42%, transparent 42%, black 95%);
+      backdrop-filter: blur(6px);
+      -webkit-mask-image: radial-gradient(circle at 50% 45%, transparent 48%, black 96%);
+      mask-image: radial-gradient(circle at 50% 45%, transparent 48%, black 96%);
     }
 
     /* ==========================================================================
-       LAYOUT CONTAINERS & EDITORIAL SECTION HEADERS (Gaya TD_Alexfolio)
+       NAVBAR PROFESIONAL (LOGO 3D + TOMBOL & TEKS LEBIH BESAR)
        ========================================================================== */
-    .page-wrap {
+    .main-shell {
       position: relative;
-      z-index: 5;
-      width: 100%;
+      z-index: 10;
+      max-width: 1560px;
+      margin: 0 auto;
+      padding: 0 28px 64px;
     }
 
-    /* Minimalist Top Navigation (Persis Header TD_Alexfolio) */
-    .top-nav {
-      max-width: 1440px;
-      margin: 0 auto;
-      height: 92px;
-      padding: 0 24px;
+    .navbar {
+      height: 96px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      border-bottom: 1px solid var(--line-light);
+      margin-bottom: 32px;
+      gap: 16px;
+      flex-wrap: wrap;
     }
 
-    .nav-link {
-      color: var(--paper-white);
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 16px;
       text-decoration: none;
-      font-size: 16px;
+      color: var(--paper-white);
+    }
+
+    .logo-3d-box {
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(145deg, #ffffff 0%, #dbeafe 100%);
+      box-shadow:
+        0 10px 25px rgba(2, 16, 36, 0.55),
+        inset 0 2px 2px #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .brand-name {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+    .brand-tag {
+      font-size: 13px;
       font-weight: 500;
-      letter-spacing: -0.01em;
-      position: relative;
-      padding-bottom: 4px;
-      cursor: pointer;
-      opacity: 0.9;
-      transition: opacity 0.2s;
+      color: rgba(255, 255, 255, 0.68);
     }
-    .nav-link:hover { opacity: 1; }
-    .nav-link::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      width: 0%;
-      height: 1.5px;
-      background: var(--paper-white);
-      transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
-    }
-    .nav-link:hover::after { width: 100%; }
 
-    .nav-group {
+    .nav-actions {
       display: flex;
       align-items: center;
-      gap: 40px;
+      gap: 12px;
+      flex-wrap: wrap;
     }
 
-    /* Sticky Section Divider Bar (// Intro, // Workspace, // Archive) */
-    .section-bar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      width: 100%;
-      background: rgba(4, 29, 66, 0.72);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-    }
-
-    .section-bar-line {
-      width: 100%;
-      height: 1px;
-      background: var(--line-light);
-    }
-
-    .section-bar-inner {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 14px 24px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 16px;
+    .nav-pill {
+      height: 46px;
+      padding: 0 24px;
+      border-radius: 99px;
+      font-size: 15px;
       font-weight: 600;
-      letter-spacing: -0.01em;
+      color: var(--paper-white);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
     }
-
-    .section-bar-slash {
-      color: var(--accent-sky);
+    .nav-pill:hover {
+      background: var(--paper-white);
+      color: var(--ink-dark);
+      transform: translateY(-1px);
     }
-
-    .section-container {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 110px 24px 130px;
-    }
-
-    /* Editorial Split Layout: 33% Sticky Giant Number + 67% Content */
-    .editorial-split {
-      display: flex;
-      align-items: flex-start;
-      gap: 48px;
-      width: 100%;
-    }
-
-    .sticky-index-col {
-      width: 28%;
-      position: sticky;
-      top: 96px;
-      display: flex;
-      justify-content: flex-start;
-    }
-
-    .giant-outline-num {
-      font-size: clamp(120px, 15vw, 220px);
-      font-weight: 300;
-      line-height: 0.88;
-      letter-spacing: -0.04em;
-      color: transparent;
-      -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.28);
-      user-select: none;
-    }
-
-    .content-col {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 64px;
+    .nav-pill.active-nav {
+      background: var(--paper-white);
+      color: var(--ink-dark);
     }
 
     /* ==========================================================================
-       3D WHITE PAPER CARD (Gaya Kartu Utama & Bento Card TD_Alexfolio)
+       TOP ROW: FULL-WIDTH 2-COLUMN (KIRI: WHITE PAPER CARD | KANAN: 3D PC CORE)
        ========================================================================== */
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 24px;
+    }
+
+    /* Kartu Kertas Putih 3D */
     .white-paper-shell {
       background: var(--paper-white);
       color: var(--ink-dark);
-      border-radius: 24px;
-      padding: 14px;
+      border-radius: 26px;
+      padding: 12px;
       box-shadow:
-        0 40px 80px -20px rgba(2, 10, 28, 0.7),
-        0 12px 24px -8px rgba(4, 29, 66, 0.35);
+        0 35px 70px -18px rgba(2, 10, 28, 0.72),
+        0 12px 24px -8px rgba(4, 29, 66, 0.4);
+      display: flex;
+      flex-direction: column;
       position: relative;
       transform-style: preserve-3d;
     }
 
     .white-paper-inner {
       border: 1px solid var(--line-dark);
-      border-radius: 16px;
-      padding: 48px;
+      border-radius: 18px;
+      padding: 36px 40px;
       background: var(--paper-white);
-      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
 
-    /* 3D Red Push-Pin Minimalis */
     .pin-3d {
       width: 26px;
       height: 26px;
       border-radius: 50%;
       background: radial-gradient(circle at 32% 30%, #ff8080 0%, #ef4444 50%, #991b1b 100%);
-      box-shadow: 0 8px 14px rgba(2, 10, 28, 0.35), inset 0 2px 3px rgba(255, 255, 255, 0.6);
-      margin: -26px auto 24px;
+      box-shadow: 0 8px 14px rgba(2, 10, 28, 0.35), inset 0 2px 3px rgba(255, 255, 255, 0.65);
+      margin: -24px auto 12px;
     }
 
-    .display-title {
-      font-size: clamp(44px, 6vw, 76px);
-      font-weight: 600;
+    .hero-title {
+      font-size: clamp(36px, 3.6vw, 56px);
+      font-weight: 700;
       letter-spacing: -0.035em;
-      line-height: 1.02;
+      line-height: 1.04;
       color: var(--ink-dark);
     }
 
-    .editorial-lead {
-      font-size: 18px;
-      font-weight: 400;
-      line-height: 1.5;
-      letter-spacing: -0.01em;
+    .hero-desc {
+      font-size: 16px;
+      line-height: 1.55;
       color: var(--ink-mid);
-      max-width: 540px;
+      margin-top: 14px;
     }
 
-    /* Minimalist Input Row */
-    .input-row {
+    .input-bar {
       display: flex;
       flex-wrap: wrap;
-      gap: 12px;
-      margin-top: 40px;
-      padding-bottom: 32px;
+      gap: 10px;
+      margin-top: 28px;
+      padding-bottom: 24px;
       border-bottom: 1px solid var(--line-dark);
     }
 
     .clean-input {
       flex: 1;
-      min-width: 240px;
-      height: 58px;
-      padding: 0 22px;
+      min-width: 220px;
+      height: 54px;
+      padding: 0 20px;
       border-radius: 14px;
-      border: 1px solid rgba(7, 25, 54, 0.18);
-      background: var(--paper-off);
-      color: var(--ink-dark);
-      font-size: 16px;
-      font-weight: 500;
-      letter-spacing: -0.01em;
-      outline: none;
-      transition: border-color 0.2s, background 0.2s;
-    }
-    .clean-input:focus {
-      border-color: var(--bg-cobalt-accent);
-      background: var(--paper-white);
-    }
-    .clean-input::placeholder {
-      color: var(--ink-light);
-      font-weight: 400;
-    }
-
-    .clean-select {
-      height: 58px;
-      padding: 0 18px;
-      border-radius: 14px;
-      border: 1px solid rgba(7, 25, 54, 0.18);
+      border: 1.5px solid rgba(7, 25, 54, 0.16);
       background: var(--paper-off);
       color: var(--ink-dark);
       font-size: 15px;
       font-weight: 500;
       outline: none;
-      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .clean-input:focus {
+      border-color: var(--cobalt-700);
+      background: var(--paper-white);
     }
 
-    /* Pill Button (Terinspirasi dari tombol "See my Work" TD_Alexfolio) */
-    .pill-btn {
-      height: 58px;
-      padding: 0 38px;
-      border-radius: 56px;
-      border: none;
-      background: var(--ink-dark);
-      color: var(--paper-white);
-      font-size: 16px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      cursor: pointer;
-      transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1), background 0.25s;
-    }
-    .pill-btn:hover {
-      background: var(--bg-cobalt-accent);
-      transform: translateY(-1px);
-    }
-    .pill-btn:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    .pill-btn-outline {
-      height: 44px;
-      padding: 0 24px;
-      border-radius: 56px;
-      border: 1px solid var(--line-dark);
-      background: transparent;
+    .clean-select {
+      height: 54px;
+      padding: 0 16px;
+      border-radius: 14px;
+      border: 1.5px solid rgba(7, 25, 54, 0.16);
+      background: var(--paper-off);
       color: var(--ink-dark);
       font-size: 14px;
       font-weight: 600;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      outline: none;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      height: 54px;
+      padding: 0 32px;
+      border-radius: 99px;
+      border: none;
+      background: var(--ink-dark);
+      color: var(--paper-white);
+      font-size: 15px;
+      font-weight: 700;
       cursor: pointer;
       transition: all 0.2s;
     }
-    .pill-btn-outline:hover {
-      background: var(--ink-dark);
-      color: var(--paper-white);
+    .btn-primary:hover {
+      background: var(--cobalt-700);
+      transform: translateY(-1px);
+    }
+    .btn-primary:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
-    /* Minimalist Toggle Row (Gaya List 01, 02 di Services TD_Alexfolio) */
-    .Minimal-options {
+    .options-row {
       display: flex;
       flex-wrap: wrap;
-      gap: 32px;
-      margin-top: 24px;
+      gap: 24px;
+      margin-top: 18px;
     }
-
-    .toggle-label {
+    .check-label {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
       font-size: 14px;
-      font-weight: 500;
+      font-weight: 600;
       color: var(--ink-mid);
       cursor: pointer;
-      user-select: none;
     }
-    .toggle-label input {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--bg-cobalt-accent);
+    .check-label input {
+      width: 17px;
+      height: 17px;
+      accent-color: var(--cobalt-700);
     }
 
     /* ==========================================================================
-       2D FLUFFY WHITE CAT STAGE (Minimalist & Clean)
+       KANAN ATAS: 3D COMPUTER INTERNALS ("SEE-THROUGH PC RIG") + DRAGON + CAT
        ========================================================================== */
-    .cat-stage-card {
-      background: rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(18px);
-      -webkit-backdrop-filter: blur(18px);
-      border: 1px solid var(--line-light);
-      border-radius: 24px;
-      padding: 32px 40px;
-    }
-
-    .cat-stage-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 28px;
-      gap: 16px;
-    }
-
-    .stage-track {
-      position: relative;
-      height: 148px;
-      border-radius: 16px;
-      background: rgba(3, 21, 48, 0.45);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      padding: 0 48px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      overflow: hidden;
-    }
-
-    .track-line {
-      position: absolute;
-      left: 120px;
-      right: 120px;
-      bottom: 34px;
-      height: 1px;
-      background: rgba(255, 255, 255, 0.18);
-    }
-
-    .endpoint-node {
-      position: relative;
-      z-index: 2;
+    .pc-rig-window {
+      background: linear-gradient(160deg, rgba(6, 36, 84, 0.85) 0%, rgba(2, 16, 36, 0.95) 100%);
+      border: 1.5px solid rgba(186, 230, 253, 0.28);
+      border-radius: 26px;
+      padding: 24px 28px;
+      box-shadow:
+        0 35px 70px -18px rgba(2, 10, 28, 0.78),
+        inset 0 0 60px rgba(56, 189, 248, 0.08);
       display: flex;
       flex-direction: column;
-      gap: 6px;
-    }
-    .endpoint-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--paper-white);
-    }
-    .endpoint-sub {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.55);
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+      perspective: 900px;
     }
 
-    /* Animasi Halus Kucing Fluffy */
-    @keyframes breathe {
+    /* Motherboard Circuit Grid di Dalam Komputer */
+    .motherboard-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(to right, rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      transform: rotateX(18deg) scale(1.1);
+      pointer-events: none;
+    }
+
+    /* 3D Rotating Processor Core (CPU Cube di Tengah Dalam Komputer) */
+    .cpu-stage-3d {
+      position: relative;
+      height: 255px;
+      border-radius: 18px;
+      background: radial-gradient(circle at 50% 45%, rgba(29, 122, 252, 0.25) 0%, rgba(2, 16, 36, 0.85) 75%);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 32px;
+      box-shadow: inset 0 0 40px rgba(2, 10, 28, 0.9);
+    }
+
+    /* 3D Isometric Cube Processor */
+    .cpu-cube-wrap {
+      position: absolute;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 68px;
+      height: 68px;
+      perspective: 400px;
+      z-index: 3;
+    }
+
+    .cpu-cube {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: spinCube3D 8s linear infinite;
+    }
+    .rig-active .cpu-cube {
+      animation-duration: 2.2s;
+    }
+
+    .cube-face {
+      position: absolute;
+      width: 52px;
+      height: 52px;
+      left: 8px;
+      top: 8px;
+      background: rgba(56, 189, 248, 0.16);
+      border: 1.5px solid rgba(186, 230, 253, 0.75);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+      backdrop-filter: blur(4px);
+    }
+    .face-front  { transform: translateZ(26px); }
+    .face-back   { transform: rotateY(180deg) translateZ(26px); }
+    .face-right  { transform: rotateY(90deg) translateZ(26px); }
+    .face-left   { transform: rotateY(-90deg) translateZ(26px); }
+    .face-top    { transform: rotateX(90deg) translateZ(26px); }
+    .face-bottom { transform: rotateX(-90deg) translateZ(26px); }
+
+    @keyframes spinCube3D {
+      0%   { transform: rotateX(24deg) rotateY(0deg) rotateZ(0deg); }
+      100% { transform: rotateX(24deg) rotateY(360deg) rotateZ(360deg); }
+    }
+
+    /* ANIMASI NAGA CYBER (GUARDIAN DRAGON) DI DALAM KOMPUTER */
+    .dragon-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.45;
+      transition: opacity 0.4s ease;
+    }
+    .rig-active .dragon-layer {
+      opacity: 1;
+    }
+
+    /* Animasi Naga Berputar & Mengalir di Sepanjang Jalur Sirkuit */
+    .dragon-energy-path {
+      stroke-dasharray: 18 10;
+      animation: dragonFlow 2.2s linear infinite;
+    }
+    .rig-active .dragon-energy-path {
+      stroke-dasharray: 28 8;
+      animation-duration: 0.65s;
+      filter: drop-shadow(0 0 10px #38bdf8);
+    }
+
+    @keyframes dragonFlow {
+      to { stroke-dashoffset: -112; }
+    }
+
+    @keyframes dragonHover {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-7px) scale(1.03); }
+    }
+    .dragon-svg-group {
+      animation: dragonHover 3.2s ease-in-out infinite;
+      transform-origin: center;
+    }
+
+    /* Animasi Kucing Fluffy 2D di Bawah Core */
+    @keyframes catBreathe {
       0%, 100% { transform: scaleY(1) translateY(0); }
       50% { transform: scaleY(1.03) translateY(-2px); }
     }
-    @keyframes wag {
-      0%, 100% { transform: rotate(-10deg); }
-      50% { transform: rotate(16deg); }
+    @keyframes catWag {
+      0%, 100% { transform: rotate(-12deg); }
+      50% { transform: rotate(18deg); }
     }
-    @keyframes blink {
-      0%, 92%, 100% { transform: scaleY(1); }
-      95% { transform: scaleY(0.08); }
-    }
-    @keyframes stepL {
+    @keyframes pawL {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(-5px); }
     }
-    @keyframes stepR {
+    @keyframes pawR {
       0%, 100% { transform: translateY(-5px); }
       50% { transform: translateY(0); }
     }
 
-    .cat-body-anim { animation: breathe 2.6s ease-in-out infinite; transform-origin: bottom center; }
-    .cat-tail-anim { animation: wag 1.8s ease-in-out infinite; transform-origin: 25px 75px; }
-    .cat-eye-anim { animation: blink 4.2s infinite; transform-origin: center; }
-    .cat-running .paw-left { animation: stepL 0.24s infinite; }
-    .cat-running .paw-right { animation: stepR 0.24s infinite; }
+    .cat-body-anim { animation: catBreathe 2.5s ease-in-out infinite; transform-origin: bottom center; }
+    .cat-tail-anim { animation: catWag 1.7s ease-in-out infinite; transform-origin: 25px 75px; }
+    .cat-running .paw-left { animation: pawL 0.22s infinite; }
+    .cat-running .paw-right { animation: pawR 0.22s infinite; }
+
+    /* Hardware Telemetry Pills di Bawah Rig */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .telemetry-box {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 10px 14px;
+      min-width: 0;
+    }
+    .telemetry-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.55);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .telemetry-val {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--paper-white);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
 
     /* ==========================================================================
-       BENTO WORKSPACE CARD (Terinspirasi langsung dari Kartu Project TD_Alexfolio)
+       UNIFIED COMMAND CENTER (LOG + FOLDER EXPLORER + ARCHIVE DIGABUNG!)
        ========================================================================== */
-    .bento-workspace {
+    .unified-dashboard {
       background: var(--paper-white);
       color: var(--ink-dark);
-      border-radius: 24px;
+      border-radius: 26px;
       padding: 14px;
-      box-shadow: 0 30px 60px -15px rgba(2, 10, 28, 0.55);
+      box-shadow: 0 35px 70px -18px rgba(2, 10, 28, 0.7);
       display: grid;
-      grid-template-columns: 1.15fr 0.85fr;
+      grid-template-columns: 310px 1fr 370px;
       gap: 14px;
-      min-height: 540px;
+      height: 640px;
     }
 
-    .bento-pane {
+    .dash-Col {
       border: 1px solid var(--line-dark);
-      border-radius: 16px;
-      padding: 28px;
+      border-radius: 18px;
+      padding: 22px;
+      background: var(--paper-white);
       display: flex;
       flex-direction: column;
+      min-width: 0;
+      min-height: 0;
       overflow: hidden;
-      background: var(--paper-white);
     }
 
-    .pane-header {
+    .col-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding-bottom: 18px;
-      margin-bottom: 18px;
+      gap: 10px;
+      padding-bottom: 14px;
+      margin-bottom: 14px;
       border-bottom: 1px solid var(--line-dark);
-      gap: 12px;
     }
 
-    .pane-title {
-      font-size: 18px;
-      font-weight: 600;
+    .col-title {
+      font-size: 17px;
+      font-weight: 700;
       letter-spacing: -0.02em;
       color: var(--ink-dark);
     }
 
-    .pane-meta {
-      font-size: 13px;
-      font-weight: 500;
-      color: var(--ink-light);
+    .col-badge {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: var(--paper-off);
+      color: var(--ink-mid);
+      border: 1px solid var(--line-dark);
     }
 
-    /* Clean Numbered Rows (Persis gaya Service List 01, 02, 03 di TD_Alexfolio) */
-    .clean-list {
+    .scroll-list {
       flex: 1;
+      min-height: 0;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
+      gap: 4px;
+      padding-right: 4px;
     }
 
-    .clean-row {
+    .list-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 13px 10px;
-      border-bottom: 1px solid rgba(7, 25, 54, 0.07);
-      font-size: 14px;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13.5px;
       font-weight: 500;
       color: var(--ink-dark);
+      border-bottom: 1px solid rgba(7, 25, 54, 0.05);
       cursor: pointer;
-      transition: background 0.15s, padding-left 0.2s;
-      border-radius: 8px;
+      transition: all 0.15s;
     }
-    .clean-row:hover {
+    .list-row:hover {
       background: var(--paper-off);
       padding-left: 16px;
     }
 
-    .clean-row-num {
-      font-size: 13px;
-      font-weight: 500;
+    .list-num {
+      font-size: 12px;
+      font-weight: 600;
       color: var(--ink-light);
       flex-shrink: 0;
     }
 
-    .code-viewer {
+    /* Tengah: Split Folder Tree (Kiri) & Live File Preview (Kanan) */
+    .explorer-split {
+      display: grid;
+      grid-template-columns: 230px 1fr;
+      gap: 14px;
       flex: 1;
-      overflow: auto;
+      min-height: 0;
+    }
+
+    .folder-box {
       background: var(--paper-off);
-      border-radius: 12px;
-      padding: 20px;
-      font-size: 13px;
-      line-height: 1.6;
-      color: var(--ink-dark);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .tokens-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin-top: 20px;
-    }
-
-    /* Archive Cards Grid */
-    .archive-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-      gap: 24px;
-    }
-
-    .archive-card {
-      background: var(--paper-white);
-      color: var(--ink-dark);
-      border-radius: 20px;
+      border: 1px solid var(--line-dark);
+      border-radius: 14px;
       padding: 12px;
-      box-shadow: 0 20px 45px -15px rgba(2, 10, 28, 0.5);
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 2px;
+      min-height: 0;
     }
 
-    .archive-img-wrap {
-      height: 200px;
+    .code-box {
+      background: #071936;
+      color: #e2e8f0;
       border-radius: 14px;
-      border: 1px solid var(--line-dark);
+      padding: 16px 18px;
       overflow: hidden;
-      background: var(--paper-off);
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-word;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
     }
-    .archive-img-wrap img {
+
+    /* Kanan: Compact Archive Cards List */
+    .archive-compact-card {
+      border: 1px solid var(--line-dark);
+      border-radius: 14px;
+      padding: 12px;
+      background: var(--paper-off);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .archive-compact-card:hover {
+      background: var(--paper-white);
+      box-shadow: 0 12px 24px -8px rgba(7, 25, 54, 0.14);
+    }
+
+    .archive-thumb {
+      height: 112px;
+      border-radius: 10px;
+      overflow: hidden;
+      background: #052659;
+      border: 1px solid var(--line-dark);
+      position: relative;
+    }
+    .archive-thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -623,348 +715,380 @@
       display: block;
     }
 
-    .archive-body {
+    .btn-sm {
+      height: 34px;
+      padding: 0 14px;
+      border-radius: 99px;
+      font-size: 12.5px;
+      font-weight: 700;
       border: 1px solid var(--line-dark);
-      border-radius: 12px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      gap: 24px;
-      flex: 1;
+      background: var(--paper-white);
+      color: var(--ink-dark);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-sm:hover {
+      background: var(--ink-dark);
+      color: var(--paper-white);
+    }
+    .btn-sm-dark {
+      background: var(--ink-dark);
+      color: var(--paper-white);
+    }
+    .btn-sm-dark:hover {
+      background: var(--cobalt-700);
     }
 
-    @media (max-width: 960px) {
-      .editorial-split { flex-direction: column; }
-      .sticky-index-col { position: relative; top: 0; width: 100%; }
-      .bento-workspace { grid-template-columns: 1fr; }
-      .white-paper-inner { padding: 28px 20px; }
-      .tokens-grid { grid-template-columns: 1fr; }
-      .cat-stage-card { padding: 24px; }
-      .stage-track { padding: 0 20px; }
+    @media (max-width: 1280px) {
+      .hero-grid { grid-template-columns: 1fr; }
+      .unified-dashboard { grid-template-columns: 1fr; height: auto; min-height: 620px; }
+      .dash-Col { min-height: 360px; }
+      .explorer-split { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 
 <body>
-  <!-- 1. 3D PERSPECTIVE CALENDAR GRID + DEPTH-OF-FIELD BLUR -->
+  <!-- 1. 3D CALENDAR GRID + FLOATING 3D ORNAMENTS + DOF BLUR -->
   <div class="bg-stage">
     <div id="bgGrid3D" class="bg-grid-3d"></div>
   </div>
+  <div class="floating-3d-ornament ornament-ring-1"></div>
+  <div class="floating-3d-ornament ornament-cube-2"></div>
   <div class="dof-vignette"></div>
 
-  <!-- 2. MAIN EDITORIAL PAGE WRAPPER -->
-  <div class="page-wrap" id="top">
+  <!-- 2. MAIN APPLICATION CONTAINER -->
+  <div class="main-shell" id="top">
 
-    <!-- Minimalist Header (Gaya TD_Alexfolio) -->
-    <header class="top-nav">
-      <a href="#top" class="nav-link" style="font-weight: 600;">© REA Studio</a>
-      <nav class="nav-group">
-        <a href="#extractor" class="nav-link">Extractor</a>
-        <a href="#workspace" class="nav-link">Workspace</a>
-        <a href="#archive" class="nav-link">Archive</a>
+    <!-- NAVBAR DENGAN LOGO 3D & TOMBOL LEBIH BESAR -->
+    <header class="navbar">
+      <a href="#top" class="brand-wrap">
+        <!-- Isometric 3D Cube Logo SVG -->
+        <div class="logo-3d-box">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <path d="M16 3L28 9.8V22.2L16 29L4 22.2V9.8L16 3Z" fill="#0A48A8" />
+            <path d="M16 3L28 9.8L16 16.5L4 9.8L16 3Z" fill="#38BDF8" />
+            <path d="M16 16.5L28 9.8V22.2L16 29V16.5Z" fill="#052659" />
+            <circle cx="16" cy="16.5" r="3" fill="#FFFFFF" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-name">Website Extractor</div>
+          <div class="brand-tag">3D Web Cloner &amp; Deep DOM Architecture Inspector</div>
+        </div>
+      </a>
+
+      <nav class="nav-actions">
+        <a href="#extractorSection" class="nav-pill active-nav">Extractor Core</a>
+        <a href="#unifiedWorkspace" class="nav-pill">Live Folder &amp; Log</a>
+        <button onclick="loadArchive()" class="nav-pill">Refresh Archive</button>
       </nav>
     </header>
 
     <!-- ======================================================================= -->
-    <!-- SECTION 01 // EXTRACTOR                                                 -->
+    <!-- BARIS ATAS: KIRI (3D WHITE PAPER INPUT) & KANAN (3D PC INTERNALS + NAGA) -->
     <!-- ======================================================================= -->
-    <div class="section-bar" id="extractor">
-      <div class="section-bar-line"></div>
-      <div class="section-bar-inner">
-        <span class="section-bar-slash">//</span>
-        <span>Extractor</span>
-      </div>
-    </div>
+    <section id="extractorSection" class="hero-grid">
 
-    <section class="section-container">
-      <div class="editorial-split">
-        <!-- Kiri: Sticky Giant Outline Number -->
-        <div class="sticky-index-col">
-          <span class="giant-outline-num">01</span>
-        </div>
-
-        <!-- Kanan: 3D White Paper Card + Fluffy Cat Courier Stage -->
-        <div class="content-col">
-          <div
-            data-tilt
-            data-tilt-max="2.5"
-            data-tilt-speed="500"
-            class="white-paper-shell"
-          >
-            <div class="white-paper-inner">
-              <div class="pin-3d"></div>
-
-              <p style="font-size: 14px; font-weight: 600; color: #0d5bd9; margin-bottom: 12px;">
-                (Web Cloner &amp; Architecture Inspector)
-              </p>
-              <h1 class="display-title">
-                Extract every element<br />from any domain.
-              </h1>
-              <p class="editorial-lead" style="margin-top: 20px;">
-                Masukkan nama domain untuk mengunduh struktur HTML, stylesheet, script, gambar resolusi penuh, dan design tokens secara utuh ke dalam satu arsip bersih.
-              </p>
-
-              <!-- Form Input Bersih -->
-              <div class="input-row">
-                <input
-                  id="domainInput"
-                  type="text"
-                  class="clean-input"
-                  placeholder="example.com atau td-alexfolio.framer.website"
-                  onkeydown="if(event.key==='Enter') startLiveExtraction()"
-                />
-                <select id="viewportSelect" class="clean-select">
-                  <option value="desktop">Desktop (1440px)</option>
-                  <option value="tablet">Tablet (834px)</option>
-                  <option value="mobile">Mobile (390px)</option>
-                </select>
-                <button id="extractBtn" onclick="startLiveExtraction()" class="pill-btn">
-                  Extract Website
-                </button>
-              </div>
-
-              <!-- Minimal Options -->
-              <div class="Minimal-options">
-                <label class="toggle-label">
-                  <input id="removeWatermarks" type="checkbox" checked />
-                  <span>Remove platform badges (Framer / Webflow)</span>
-                </label>
-                <label class="toggle-label">
-                  <input id="runReaAnalysis" type="checkbox" checked />
-                  <span>Include deep DOM &amp; bundle inspection</span>
-                </label>
-              </div>
-            </div>
+      <!-- KIRI: 3D White Paper Extractor Card -->
+      <div
+        data-tilt
+        data-tilt-max="2"
+        data-tilt-speed="500"
+        class="white-paper-shell"
+      >
+        <div class="white-paper-inner">
+          <div>
+            <div class="pin-3d"></div>
+            <p style="font-size: 13px; font-weight: 700; color: var(--cobalt-700); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px;">
+              01 // Full-Stack Domain Cloner
+            </p>
+            <h1 class="hero-title">
+              Extract every element from any domain.
+            </h1>
+            <p class="hero-desc">
+              Masukkan nama domain untuk mengekstrak HTML, CSS, JS, gambar resolusi penuh, dan design tokens secara real-time. Lihat proses ekstraksi langsung di dalam mesin 3D di sebelah kanan.
+            </p>
           </div>
 
-          <!-- Fluffy White Cat Courier Stage -->
-          <div class="cat-stage-card">
-            <div class="cat-stage-header">
-              <div>
-                <p style="font-size: 16px; font-weight: 600;" id="catSpeechText">
-                  Menunggu domain tujuan untuk mulai mengangkut file.
-                </p>
-                <p style="font-size: 13px; color: rgba(255,255,255,0.6); margin-top: 2px;" id="catSubStatus">
-                  Idle • 0 file diangkut
-                </p>
-              </div>
-              <div style="text-align: right;">
-                <span id="progressPercent" style="font-size: 28px; font-weight: 600; letter-spacing: -0.03em;">0%</span>
-              </div>
+          <div>
+            <div class="input-bar">
+              <input
+                id="domainInput"
+                type="text"
+                class="clean-input"
+                placeholder="example.com atau td-alexfolio.framer.website"
+                onkeydown="if(event.key==='Enter') startLiveExtraction()"
+              />
+              <select id="viewportSelect" class="clean-select">
+                <option value="desktop">Desktop (1440px)</option>
+                <option value="tablet">Tablet (834px)</option>
+                <option value="mobile">Mobile (390px)</option>
+              </select>
+              <button id="extractBtn" onclick="startLiveExtraction()" class="btn-primary">
+                Extract Website
+              </button>
             </div>
 
-            <div class="stage-track" id="stageTrack">
-              <div class="track-line"></div>
-
-              <!-- Titik Asal: Domain -->
-              <div class="endpoint-node">
-                <span class="endpoint-title" id="sourceNodeLabel">Source Domain</span>
-                <span class="endpoint-sub">Remote Host</span>
-              </div>
-
-              <!-- Kucing Putih Fluffy 2D -->
-              <div id="catCourier" style="position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; flex-direction: column; align-items: center;">
-                <div
-                  id="carriedFilePill"
-                  style="display: none; margin-bottom: -4px; padding: 3px 10px; border-radius: 99px; background: #ffffff; color: #071936; font-size: 11px; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.25);"
-                >
-                  index.html
-                </div>
-
-                <svg id="fluffyCatSvg" width="108" height="88" viewBox="0 0 140 115" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <ellipse cx="70" cy="106" rx="36" ry="5" fill="rgba(2, 10, 28, 0.35)" />
-                  <g class="cat-tail-anim">
-                    <path d="M34 80 C10 72, 4 44, 22 36 C36 30, 44 50, 38 68 Z" fill="#FFFFFF" />
-                    <circle cx="17" cy="48" r="9" fill="#FFFFFF" />
-                    <circle cx="24" cy="39" r="8" fill="#FFFFFF" />
-                  </g>
-                  <g class="paw-left">
-                    <ellipse cx="50" cy="98" rx="9" ry="6.5" fill="#FFFFFF" />
-                    <ellipse cx="50" cy="100" rx="3.5" ry="2" fill="#F472B6" />
-                  </g>
-                  <g class="paw-right">
-                    <ellipse cx="88" cy="98" rx="9" ry="6.5" fill="#FFFFFF" />
-                    <ellipse cx="88" cy="100" rx="3.5" ry="2" fill="#F472B6" />
-                  </g>
-                  <g class="cat-body-anim">
-                    <ellipse cx="70" cy="76" rx="34" ry="24" fill="#FFFFFF" />
-                    <circle cx="44" cy="74" r="14" fill="#FFFFFF" />
-                    <circle cx="96" cy="74" r="14" fill="#FFFFFF" />
-                    <circle cx="56" cy="90" r="12" fill="#FFFFFF" />
-                    <circle cx="84" cy="90" r="12" fill="#FFFFFF" />
-                    <path d="M44 42 L38 16 L62 30 Z" fill="#FFFFFF" />
-                    <path d="M45 38 L42 22 L57 31 Z" fill="#FBCFE8" />
-                    <path d="M96 42 L102 16 L78 30 Z" fill="#FFFFFF" />
-                    <path d="M95 38 L98 22 L83 31 Z" fill="#FBCFE8" />
-                    <ellipse cx="70" cy="48" rx="30" ry="24" fill="#FFFFFF" />
-                    <circle cx="42" cy="52" r="11" fill="#FFFFFF" />
-                    <circle cx="98" cy="52" r="11" fill="#FFFFFF" />
-                    <circle cx="65" cy="24" r="6" fill="#FFFFFF" />
-                    <circle cx="73" cy="23" r="7" fill="#FFFFFF" />
-                    <g class="cat-eye-anim">
-                      <circle cx="57" cy="47" r="5" fill="#071936" />
-                      <circle cx="55.5" cy="45" r="1.8" fill="#FFFFFF" />
-                      <circle cx="83" cy="47" r="5" fill="#071936" />
-                      <circle cx="81.5" cy="45" r="1.8" fill="#FFFFFF" />
-                    </g>
-                    <ellipse cx="48" cy="54" rx="4.5" ry="2.5" fill="#F9A8D4" opacity="0.6" />
-                    <ellipse cx="92" cy="54" rx="4.5" ry="2.5" fill="#F9A8D4" opacity="0.6" />
-                    <polygon points="70,51 67,55 73,55" fill="#F472B6" />
-                    <path d="M64 57 Q67 60 70 57 Q73 60 76 57" stroke="#071936" stroke-width="1.8" stroke-linecap="round" fill="none" />
-                  </g>
-                </svg>
-              </div>
-
-              <!-- Titik Tujuan: Local Folder -->
-              <div class="endpoint-node" style="text-align: right;">
-                <span class="endpoint-title">Local Archive</span>
-                <span class="endpoint-sub" id="vaultCountLabel">0 files stored</span>
-              </div>
+            <div class="options-row">
+              <label class="check-label">
+                <input id="removeWatermarks" type="checkbox" checked />
+                <span>Clean platform watermarks (Framer / Webflow)</span>
+              </label>
+              <label class="check-label">
+                <input id="runReaAnalysis" type="checkbox" checked />
+                <span>Deep CDP &amp; JS bundle inspection</span>
+              </label>
             </div>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- ======================================================================= -->
-    <!-- SECTION 02 // WORKSPACE (FOLDER EXPLORER, INSPECTOR & LIVE LOG)         -->
-    <!-- ======================================================================= -->
-    <div class="section-bar" id="workspace">
-      <div class="section-bar-line"></div>
-      <div class="section-bar-inner">
-        <span class="section-bar-slash">//</span>
-        <span>Workspace</span>
-      </div>
-    </div>
+      <!-- KANAN: 3D COMPUTER INTERNALS ("SEE-THROUGH RIG" + DRAGON + FLUFFY CAT) -->
+      <div id="pcRigCard" class="pc-rig-window" data-tilt data-tilt-max="3" data-tilt-speed="400">
+        <div class="motherboard-grid"></div>
 
-    <section class="section-container">
-      <div class="editorial-split">
-        <div class="sticky-index-col">
-          <span class="giant-outline-num">02</span>
-        </div>
-
-        <div class="content-col">
-          <!-- Header & Action Buttons -->
-          <div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px;">
-            <div>
-              <h2 style="font-size: clamp(32px, 4vw, 54px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05;">
-                Folder Structure &amp;<br />Live File Inspector
-              </h2>
-            </div>
-            <div id="exportActions" style="display: none; gap: 12px;">
-              <a id="previewLinkBtn" target="_blank" class="pill-btn-outline" style="background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.25);">
-                Open Live Clone
-              </a>
-              <a id="zipDownloadBtn" class="pill-btn-outline" style="background: #ffffff; color: #071936; border-color: #ffffff;">
-                Download ZIP Archive
-              </a>
-            </div>
-          </div>
-
-          <!-- Bento Split Card: Kiri (File Inspector), Kanan (Folder Tree & Stream Log) -->
-          <div class="bento-workspace">
-            <!-- Kiri (60%): Code & Image Previewer -->
-            <div class="bento-pane">
-              <div class="pane-header">
-                <span class="pane-title" id="inspectorFileTitle">File Preview</span>
-                <button
-                  id="copyContentBtn"
-                  onclick="copyInspectorCode()"
-                  class="pill-btn-outline"
-                  style="height: 32px; padding: 0 14px; font-size: 12px; display: none;"
-                >
-                  Copy Code
-                </button>
-              </div>
-              <div id="inspectorBody" class="code-viewer">
-                Pilih file dari daftar folder di sebelah kanan untuk melihat struktur kode atau gambar secara langsung.
-              </div>
-            </div>
-
-            <!-- Kanan (40%): Folder Explorer & Activity Stream -->
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-              <!-- Atas: Interactive Folder Tree -->
-              <div class="bento-pane" style="flex: 1;">
-                <div class="pane-header">
-                  <span class="pane-title">Extracted Files</span>
-                  <span class="pane-meta" id="fileCountMeta">0 items</span>
-                </div>
-                <div id="folderListBox" class="clean-list">
-                  <div style="color: var(--ink-light); font-size: 14px; padding: 24px 0;">
-                    Folder masih kosong.
-                  </div>
-                </div>
-              </div>
-
-              <!-- Bawah: Minimalist Process Log -->
-              <div class="bento-pane" style="height: 210px;">
-                <div class="pane-header">
-                  <span class="pane-title">Process Stream</span>
-                  <span class="pane-meta" id="streamCountMeta">01</span>
-                </div>
-                <div id="streamLogBox" class="clean-list">
-                  <div class="clean-row" style="cursor: default;">
-                    <span>Ready for domain input</span>
-                    <span class="clean-row-num">01</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Design Tokens Bar (Muncul otomatis saat ekstraksi selesai) -->
-          <div id="tokensCard" class="white-paper-shell" style="display: none;">
-            <div class="white-paper-inner" style="padding: 36px;">
-              <div class="pane-header">
-                <span class="pane-title">Extracted Design Tokens</span>
-                <button onclick="copyTailwindTokens()" class="pill-btn-outline" style="height: 36px; padding: 0 18px; font-size: 13px;">
-                  Copy Tailwind Tokens
-                </button>
-              </div>
-              <div class="tokens-grid">
-                <div>
-                  <p class="pane-meta" style="margin-bottom: 12px;">Color Palette</p>
-                  <div id="colorsWrap" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-                </div>
-                <div>
-                  <p class="pane-meta" style="margin-bottom: 12px;">Typography</p>
-                  <div id="fontsWrap" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ======================================================================= -->
-    <!-- SECTION 03 // ARCHIVE                                                   -->
-    <!-- ======================================================================= -->
-    <div class="section-bar" id="archive">
-      <div class="section-bar-line"></div>
-      <div class="section-bar-inner">
-        <span class="section-bar-slash">//</span>
-        <span>Archive</span>
-      </div>
-    </div>
-
-    <section class="section-container">
-      <div class="editorial-split">
-        <div class="sticky-index-col">
-          <span class="giant-outline-num">03</span>
-        </div>
-
-        <div class="content-col">
-          <div style="display: flex; align-items: flex-end; justify-content: space-between;">
-            <h2 style="font-size: clamp(32px, 4vw, 54px); font-weight: 600; letter-spacing: -0.03em; line-height: 1.05;">
-              Recent Extractions
+        <!-- Header Kaca Komputer -->
+        <div style="position: relative; z-index: 5; display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; gap: 12px;">
+          <div style="min-width: 0;">
+            <p style="font-size: 12px; font-weight: 700; color: var(--cyan-400); text-transform: uppercase; letter-spacing: 0.08em;">
+              02 // Internal Engine Core (See-Through Rig)
+            </p>
+            <h2 id="catSpeechText" style="font-size: 18px; font-weight: 700; color: #ffffff; margin-top: 2px;">
+              System Standby — Ready to deploy Dragon &amp; Cat Courier
             </h2>
           </div>
+          <div style="text-align: right; flex-shrink: 0;">
+            <span id="progressPercent" style="font-size: 32px; font-weight: 800; letter-spacing: -0.03em; color: var(--cyan-400);">0%</span>
+          </div>
+        </div>
 
-          <div id="historyGrid" class="archive-grid"></div>
+        <!-- Jendela Dalam Komputer: 3D Rotating CPU + Cyber Dragon + Fluffy Cat -->
+        <div class="cpu-stage-3d" id="cpuStage3d">
+
+          <!-- 3D Rotating Processor Cube (Di Atas Tengah) -->
+          <div class="cpu-cube-wrap">
+            <div class="cpu-cube">
+              <div class="cube-face face-front"></div>
+              <div class="cube-face face-back"></div>
+              <div class="cube-face face-right"></div>
+              <div class="cube-face face-left"></div>
+              <div class="cube-face face-top"></div>
+              <div class="cube-face face-bottom"></div>
+            </div>
+          </div>
+
+          <!-- ANIMASI NAGA CYBER (GUARDIAN DRAGON) MELINGKAR DI SIRKUIT KOMPUTER -->
+          <div class="dragon-layer">
+            <svg width="100%" height="100%" viewBox="0 0 600 250" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <!-- Jalur Sirkuit Motherboard -->
+              <path d="M 30 60 H 190 L 220 90 H 380 L 410 60 H 570" stroke="rgba(56,189,248,0.18)" stroke-width="1.5" />
+              <path d="M 40 205 H 560" stroke="rgba(255,255,255,0.2)" stroke-width="1.5" stroke-dasharray="6 6" />
+
+              <!-- Badan Naga Cyber Berpendar (Energy Dragon Stream) -->
+              <g class="dragon-svg-group">
+                <path
+                  class="dragon-energy-path"
+                  d="M 55 135 C 135 35, 225 205, 305 110 C 385 20, 455 190, 535 95"
+                  stroke="url(#dragonGrad)"
+                  stroke-width="7"
+                  stroke-linecap="round"
+                />
+                <!-- Siluet Kepala & Tanduk Naga di Ujung Kanan -->
+                <path
+                  d="M 522 76 L 548 64 L 540 84 L 562 88 L 542 102 L 552 112 L 526 106 Z"
+                  fill="#38BDF8"
+                />
+                <circle cx="541" cy="88" r="2.5" fill="#FFFFFF" />
+              </g>
+
+              <defs>
+                <linearGradient id="dragonGrad" x1="55" y1="135" x2="545" y2="95" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#0A48A8" stop-opacity="0.2" />
+                  <stop offset="50%" stop-color="#38BDF8" stop-opacity="0.9" />
+                  <stop offset="100%" stop-color="#FFFFFF" stop-opacity="1" />
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+
+          <!-- Node Kiri: Remote Host -->
+          <div style="position: relative; z-index: 6;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--cyan-400); text-transform: uppercase;">Source Node</div>
+            <div id="sourceNodeLabel" style="font-size: 15px; font-weight: 700; color: #fff; max-width: 130px; overflow: hidden; text-overflow: ellipsis;">
+              Remote Host
+            </div>
+          </div>
+
+          <!-- KUCING PUTIH FLUFFY 2D PENGANGKUT DATA -->
+          <div id="catCourier" style="position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); z-index: 8; display: flex; flex-direction: column; align-items: center;">
+            <div
+              id="carriedFilePill"
+              style="display: none; margin-bottom: -4px; padding: 3px 11px; border-radius: 99px; background: #ffffff; color: #071936; font-size: 11px; font-weight: 800; box-shadow: 0 6px 14px rgba(0,0,0,0.35);"
+            >
+              index.html
+            </div>
+
+            <svg id="fluffyCatSvg" width="102" height="84" viewBox="0 0 140 115" fill="none">
+              <ellipse cx="70" cy="106" rx="36" ry="5" fill="rgba(2, 10, 28, 0.45)" />
+              <g class="cat-tail-anim">
+                <path d="M34 80 C10 72, 4 44, 22 36 C36 30, 44 50, 38 68 Z" fill="#FFFFFF" />
+                <circle cx="17" cy="48" r="9" fill="#FFFFFF" />
+                <circle cx="24" cy="39" r="8" fill="#FFFFFF" />
+              </g>
+              <g class="paw-left">
+                <ellipse cx="50" cy="98" rx="9" ry="6.5" fill="#FFFFFF" />
+                <ellipse cx="50" cy="100" rx="3.5" ry="2" fill="#F472B6" />
+              </g>
+              <g class="paw-right">
+                <ellipse cx="88" cy="98" rx="9" ry="6.5" fill="#FFFFFF" />
+                <ellipse cx="88" cy="100" rx="3.5" ry="2" fill="#F472B6" />
+              </g>
+              <g class="cat-body-anim">
+                <ellipse cx="70" cy="76" rx="34" ry="24" fill="#FFFFFF" />
+                <circle cx="44" cy="74" r="14" fill="#FFFFFF" />
+                <circle cx="96" cy="74" r="14" fill="#FFFFFF" />
+                <circle cx="56" cy="90" r="12" fill="#FFFFFF" />
+                <circle cx="84" cy="90" r="12" fill="#FFFFFF" />
+                <path d="M44 42 L38 16 L62 30 Z" fill="#FFFFFF" />
+                <path d="M45 38 L42 22 L57 31 Z" fill="#FBCFE8" />
+                <path d="M96 42 L102 16 L78 30 Z" fill="#FFFFFF" />
+                <path d="M95 38 L98 22 L83 31 Z" fill="#FBCFE8" />
+                <ellipse cx="70" cy="48" rx="30" ry="24" fill="#FFFFFF" />
+                <circle cx="42" cy="52" r="11" fill="#FFFFFF" />
+                <circle cx="98" cy="52" r="11" fill="#FFFFFF" />
+                <circle cx="65" cy="24" r="6" fill="#FFFFFF" />
+                <circle cx="73" cy="23" r="7" fill="#FFFFFF" />
+                <circle cx="57" cy="47" r="5" fill="#071936" />
+                <circle cx="55.5" cy="45" r="1.8" fill="#FFFFFF" />
+                <circle cx="83" cy="47" r="5" fill="#071936" />
+                <circle cx="81.5" cy="45" r="1.8" fill="#FFFFFF" />
+                <ellipse cx="48" cy="54" rx="4.5" ry="2.5" fill="#F9A8D4" opacity="0.65" />
+                <ellipse cx="92" cy="54" rx="4.5" ry="2.5" fill="#F9A8D4" opacity="0.65" />
+                <polygon points="70,51 67,55 73,55" fill="#F472B6" />
+                <path d="M64 57 Q67 60 70 57 Q73 60 76 57" stroke="#071936" stroke-width="1.8" stroke-linecap="round" fill="none" />
+              </g>
+            </svg>
+          </div>
+
+          <!-- Node Kanan: Local Vault -->
+          <div style="position: relative; z-index: 6; text-align: right;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--cyan-400); text-transform: uppercase;">Local Vault</div>
+            <div id="vaultCountLabel" style="font-size: 15px; font-weight: 700; color: #fff;">
+              0 files stored
+            </div>
+          </div>
+        </div>
+
+        <!-- Baris Telemetri Komputer (Seperti Melihat Statistik Mesin) -->
+        <div class="telemetry-grid" style="position: relative; z-index: 5;">
+          <div class="telemetry-box">
+            <div class="telemetry-label">Engine Core</div>
+            <div class="telemetry-val" id="telEngineState">Idle / Ready</div>
+          </div>
+          <div class="telemetry-box">
+            <div class="telemetry-label">Active Packet</div>
+            <div class="telemetry-val" id="telActivePacket">Waiting...</div>
+          </div>
+          <div class="telemetry-box">
+            <div class="telemetry-label">CDP Bridge</div>
+            <div class="telemetry-val" id="telPlatform">Port 9222</div>
+          </div>
         </div>
       </div>
+
+    </section>
+
+    <!-- ======================================================================= -->
+    <!-- BARIS BAWAH: UNIFIED 3-COLUMN WORKSPACE (LOG + FOLDER + ARCHIVE)        -->
+    <!-- ======================================================================= -->
+    <section id="unifiedWorkspace" class="unified-dashboard">
+
+      <!-- KOLOM 1 (KIRI): LIVE PROCESS LOG + DESIGN TOKENS -->
+      <div class="dash-Col">
+        <div class="col-header">
+          <span class="col-title">Process Stream</span>
+          <span class="col-badge" id="streamCountMeta">01</span>
+        </div>
+
+        <div id="streamLogBox" class="scroll-list">
+          <div class="list-row" style="cursor: default;">
+            <span>Engine initialized and ready</span>
+            <span class="list-num">01</span>
+          </div>
+        </div>
+
+        <!-- Design Tokens (Tergabung Rapi di Bawah Log) -->
+        <div style="margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line-dark);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-size: 14px; font-weight: 700;">Design Tokens</span>
+            <button onclick="copyTailwindTokens()" class="btn-sm" style="height: 28px; font-size: 11px;">
+              Copy Config
+            </button>
+          </div>
+          <div id="colorsWrap" style="display: flex; flex-wrap: wrap; gap: 6px; max-height: 76px; overflow-y: auto;">
+            <span style="font-size: 12.5px; color: var(--ink-light);">Palet warna &amp; font akan muncul di sini.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOLOM 2 (TENGAH): INTERACTIVE FOLDER TREE & FILE CODE INSPECTOR -->
+      <div class="dash-Col">
+        <div class="col-header">
+          <div>
+            <span class="col-title">Folder &amp; File Inspector</span>
+            <span class="col-badge" id="fileCountMeta" style="margin-left: 8px;">0 files</span>
+          </div>
+          <div id="exportActions" style="display: none; gap: 8px;">
+            <a id="previewLinkBtn" target="_blank" class="btn-sm">Live Clone</a>
+            <a id="zipDownloadBtn" class="btn-sm btn-sm-dark">Download ZIP</a>
+          </div>
+        </div>
+
+        <div class="explorer-split">
+          <!-- Daftar Pohon Folder -->
+          <div id="folderListBox" class="folder-box">
+            <div style="color: var(--ink-light); font-size: 13px; padding: 16px 8px;">
+              Belum ada folder aktif. Ekstrak domain atau pilih dari Archive di sebelah kanan.
+            </div>
+          </div>
+
+          <!-- Isi File / Preview -->
+          <div class="code-box">
+            <div style="display: flex; align-items: center; justify-content: space-between; padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.12); gap: 8px;">
+              <span id="inspectorFileTitle" style="font-size: 12.5px; font-weight: 700; color: var(--cyan-400); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                No file selected
+              </span>
+              <button
+                id="copyContentBtn"
+                onclick="copyInspectorCode()"
+                class="btn-sm"
+                style="height: 26px; padding: 0 12px; font-size: 11px; display: none; flex-shrink: 0;"
+              >
+                Copy Code
+              </button>
+            </div>
+            <div id="inspectorBody" style="flex: 1; min-height: 0; overflow: auto;">
+              Klik salah satu file di pohon folder untuk melihat kode HTML, CSS, JS, JSON, atau gambar secara langsung.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- KOLOM 3 (KANAN): RECENT EXTRACTIONS ARCHIVE (TERGABUNG LANGSUNG!) -->
+      <div class="dash-Col">
+        <div class="col-header">
+          <span class="col-title">Extracted Archive</span>
+          <span class="col-badge" id="archiveCountBadge">0 saved</span>
+        </div>
+
+        <div id="historyGrid" class="scroll-list" style="gap: 12px;"></div>
+      </div>
+
     </section>
 
   </div>
@@ -981,9 +1105,9 @@
     let moveRight = true;
     let activeCodeText = '';
 
-    // 1. Lenis Smooth Scrolling
+    // 1. Lenis Smooth Scroll
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 1.15,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
     });
@@ -993,22 +1117,26 @@
     }
     requestAnimationFrame(raf);
 
-    // Smooth anchor navigation with Lenis
-    document.querySelectorAll('.nav-link[href^="#"]').forEach((link) => {
+    // Smooth nav scrolling & active pill state
+    document.querySelectorAll('.nav-actions a.nav-pill[href^="#"], a.brand-wrap[href^="#"]').forEach((link) => {
       link.addEventListener('click', (e) => {
         const target = link.getAttribute('href');
         if (target && document.querySelector(target)) {
           e.preventDefault();
-          lenis.scrollTo(target, { offset: 0 });
+          lenis.scrollTo(target, { offset: -16 });
+          if (link.classList.contains('nav-pill')) {
+            document.querySelectorAll('.nav-actions a.nav-pill').forEach((p) => p.classList.remove('active-nav'));
+            link.classList.add('active-nav');
+          }
         }
       });
     });
 
-    // 2. Render 3D Calendar Background Grid
+    // 2. Render 3D Calendar Grid
     function initBackgroundGrid() {
       const grid = document.getElementById('bgGrid3D');
       let cells = '';
-      for (let i = 1; i <= 20; i++) {
+      for (let i = 1; i <= 24; i++) {
         const day = ((i + 18) % 30) + 1;
         cells += `
           <div class="bg-cell">
@@ -1019,9 +1147,9 @@
       grid.innerHTML = cells;
 
       window.addEventListener('mousemove', (e) => {
-        const x = (e.clientX / window.innerWidth - 0.5) * 6;
-        const y = (e.clientY / window.innerHeight - 0.5) * 6;
-        grid.style.transform = `rotateX(${26 - y}deg) rotateZ(${-12 + x}deg) translateZ(-100px)`;
+        const x = (e.clientX / window.innerWidth - 0.5) * 7;
+        const y = (e.clientY / window.innerHeight - 0.5) * 7;
+        grid.style.transform = `rotateX(${26 - y}deg) rotateZ(${-12 + x}deg) translateZ(-90px)`;
       });
     }
 
@@ -1029,12 +1157,12 @@
       return String(str || '').replace(/\p{Extended_Pictographic}/gu, '').replace(/\s+/g, ' ').trim();
     }
 
-    // 3. Animasi Kucing Fluffy Mengangkut File
+    // 3. Animasi Kucing Fluffy & Naga di Dalam Komputer 3D
     function triggerCatCourier(fileName, speechText) {
       const cat = document.getElementById('catCourier');
       const svg = document.getElementById('fluffyCatSvg');
       const pill = document.getElementById('carriedFilePill');
-      const track = document.getElementById('stageTrack');
+      const stage = document.getElementById('cpuStage3d');
 
       cat.classList.add('cat-running');
       pill.style.display = 'inline-block';
@@ -1047,24 +1175,24 @@
       carriedFilesCount++;
       const numFormatted = carriedFilesCount < 10 ? `0${carriedFilesCount}` : `${carriedFilesCount}`;
       document.getElementById('vaultCountLabel').textContent = `${numFormatted} files stored`;
-      document.getElementById('catSubStatus').textContent = `Active • Mengangkut ${fileName}`;
+      document.getElementById('telActivePacket').textContent = fileName;
 
-      const trackWidth = track ? track.clientWidth : 600;
-      const maxOffset = Math.max(36, Math.min(150, Math.floor((trackWidth - 240) / 2)));
+      const stageWidth = stage ? stage.clientWidth : 540;
+      const maxOffset = Math.max(36, Math.min(135, Math.floor((stageWidth - 220) / 2)));
       const offset = moveRight ? maxOffset : -maxOffset;
       moveRight = !moveRight;
 
       gsap.to(cat, {
         x: offset,
-        duration: 0.5,
+        duration: 0.48,
         ease: 'power2.out',
         onComplete: () => {
-          gsap.fromTo(svg, { y: -10 }, { y: 0, duration: 0.25, ease: 'bounce.out' });
+          gsap.fromTo(svg, { y: -10 }, { y: 0, duration: 0.24, ease: 'bounce.out' });
         },
       });
     }
 
-    // 4. Tambah Baris ke Process Stream (Gaya Numbered List 01, 02 TD_Alexfolio)
+    // 4. Tambah Baris ke Process Stream
     function addStreamRow(text) {
       const box = document.getElementById('streamLogBox');
       if (streamStep === 1) box.innerHTML = '';
@@ -1074,26 +1202,24 @@
       streamStep++;
 
       const row = document.createElement('div');
-      row.className = 'clean-row';
+      row.className = 'list-row';
       row.style.cursor = 'default';
 
-      const textSpan = document.createElement('span');
-      textSpan.style.overflow = 'hidden';
-      textSpan.style.textOverflow = 'ellipsis';
-      textSpan.style.whiteSpace = 'nowrap';
-      textSpan.textContent = stripEmojis(text);
+      const msgSpan = document.createElement('span');
+      msgSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+      msgSpan.textContent = stripEmojis(text);
 
       const numSpan = document.createElement('span');
-      numSpan.className = 'clean-row-num';
+      numSpan.className = 'list-num';
       numSpan.textContent = numStr;
 
-      row.appendChild(textSpan);
+      row.appendChild(msgSpan);
       row.appendChild(numSpan);
       box.appendChild(row);
       box.scrollTop = box.scrollHeight;
     }
 
-    // 5. Tambah File secara Live ke Daftar Folder
+    // 5. Tambah File secara Live ke Pohon Folder
     function addLiveFolderRow(folderPath, size) {
       const box = document.getElementById('folderListBox');
       if (carriedFilesCount === 1) box.innerHTML = '';
@@ -1102,16 +1228,14 @@
       const kb = size ? `${(size / 1024).toFixed(1)} KB` : '';
 
       const row = document.createElement('div');
-      row.className = 'clean-row';
+      row.className = 'list-row';
 
       const pathSpan = document.createElement('span');
-      pathSpan.style.overflow = 'hidden';
-      pathSpan.style.textOverflow = 'ellipsis';
-      pathSpan.style.whiteSpace = 'nowrap';
+      pathSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
       pathSpan.textContent = folderPath;
 
       const sizeSpan = document.createElement('span');
-      sizeSpan.className = 'clean-row-num';
+      sizeSpan.className = 'list-num';
       sizeSpan.textContent = kb;
 
       row.appendChild(pathSpan);
@@ -1123,7 +1247,7 @@
       box.scrollTop = box.scrollHeight;
     }
 
-    // 6. Render Pohon Folder Lengkap
+    // 6. Render Struktur Folder Utuh
     function renderFolderTree(jobId, treeNodes) {
       currentJobId = jobId;
       const box = document.getElementById('folderListBox');
@@ -1133,8 +1257,8 @@
       function walk(nodes, depth = 0) {
         nodes.forEach((node) => {
           const row = document.createElement('div');
-          row.className = 'clean-row';
-          row.style.paddingLeft = `${depth * 16 + 10}px`;
+          row.className = 'list-row';
+          row.style.paddingLeft = `${depth * 12 + 8}px`;
 
           if (node.type === 'folder') {
             row.style.fontWeight = '700';
@@ -1143,7 +1267,7 @@
             const nameSpan = document.createElement('span');
             nameSpan.textContent = `/${node.name}`;
             const dirSpan = document.createElement('span');
-            dirSpan.className = 'clean-row-num';
+            dirSpan.className = 'list-num';
             dirSpan.textContent = 'DIR';
 
             row.appendChild(nameSpan);
@@ -1155,13 +1279,11 @@
             const kb = `${(node.size / 1024).toFixed(1)} KB`;
 
             const nameSpan = document.createElement('span');
-            nameSpan.style.overflow = 'hidden';
-            nameSpan.style.textOverflow = 'ellipsis';
-            nameSpan.style.whiteSpace = 'nowrap';
+            nameSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
             nameSpan.textContent = node.name;
 
             const sizeSpan = document.createElement('span');
-            sizeSpan.className = 'clean-row-num';
+            sizeSpan.className = 'list-num';
             sizeSpan.textContent = kb;
 
             row.appendChild(nameSpan);
@@ -1176,14 +1298,14 @@
       document.getElementById('fileCountMeta').textContent = `${totalFiles} files`;
     }
 
-    // 7. Buka & Preview Isi File
+    // 7. Buka & Preview File di Tengah
     async function openFilePreview(jobId, filePath) {
       const titleEl = document.getElementById('inspectorFileTitle');
       const bodyEl = document.getElementById('inspectorBody');
       const copyBtn = document.getElementById('copyContentBtn');
 
       titleEl.textContent = filePath;
-      bodyEl.textContent = 'Loading file content...';
+      bodyEl.textContent = 'Reading file from local vault...';
 
       try {
         const res = await fetch(`/api/file-content?jobId=${encodeURIComponent(jobId)}&filePath=${encodeURIComponent(filePath)}`);
@@ -1194,10 +1316,10 @@
           copyBtn.style.display = 'none';
           bodyEl.innerHTML = '';
           const wrap = document.createElement('div');
-          wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 24px;';
+          wrap.style.cssText = 'display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 16px;';
           const img = document.createElement('img');
           img.src = data.url;
-          img.style.cssText = 'max-height: 360px; max-width: 100%; border-radius: 12px; object-fit: contain;';
+          img.style.cssText = 'max-height: 360px; max-width: 100%; border-radius: 10px; object-fit: contain;';
           wrap.appendChild(img);
           bodyEl.appendChild(wrap);
         } else {
@@ -1218,7 +1340,7 @@
       setTimeout(() => (btn.textContent = 'Copy Code'), 1400);
     }
 
-    // 8. Mulai Proses Ekstraksi (SSE)
+    // 8. Mulai Ekstraksi Live (Mengaktifkan Naga + CPU Cube + Kucing Fluffy)
     function startLiveExtraction() {
       const domain = document.getElementById('domainInput').value.trim();
       if (!domain) return;
@@ -1240,7 +1362,9 @@
       document.getElementById('vaultCountLabel').textContent = '00 files stored';
       document.getElementById('progressPercent').textContent = '5%';
       document.getElementById('sourceNodeLabel').textContent = domain;
-      document.getElementById('catSubStatus').textContent = 'Active • Menghubungi domain...';
+      document.getElementById('telEngineState').textContent = 'Dragon Boost Active';
+      document.getElementById('telActivePacket').textContent = 'Initializing...';
+      document.getElementById('pcRigCard').classList.add('rig-active');
       document.getElementById('extractBtn').disabled = true;
 
       const params = new URLSearchParams({ domain, removeWatermarks, runReaAnalysis, viewport });
@@ -1254,7 +1378,8 @@
         addStreamRow(errorText);
         document.getElementById('catCourier').classList.remove('cat-running');
         document.getElementById('carriedFilePill').style.display = 'none';
-        document.getElementById('catSubStatus').textContent = 'Stopped';
+        document.getElementById('pcRigCard').classList.remove('rig-active');
+        document.getElementById('telEngineState').textContent = 'Halted';
         document.getElementById('extractBtn').disabled = false;
       }
 
@@ -1275,7 +1400,7 @@
             document.getElementById('catSpeechText').textContent = stripEmojis(data.catSpeech);
           }
         } else if (data.type === 'catCarry') {
-          triggerCatCourier(data.fileName, `Mengangkut ${data.fileName} ke dalam folder lokal.`);
+          triggerCatCourier(data.fileName, `Dragon & Cat mengangkut ${data.fileName}`);
           addLiveFolderRow(data.folderPath, data.size);
         } else if (data.type === 'complete') {
           eventSource.close();
@@ -1297,10 +1422,14 @@
 
       const cat = document.getElementById('catCourier');
       cat.classList.remove('cat-running');
+      document.getElementById('pcRigCard').classList.remove('rig-active');
       gsap.to(cat, { x: 0, duration: 0.45, ease: 'power2.out' });
+
       document.getElementById('carriedFilePill').style.display = 'none';
-      document.getElementById('catSpeechText').textContent = `Ekstraksi ${metadata.domain} selesai.`;
-      document.getElementById('catSubStatus').textContent = `Complete • ${metadata.stats.assetsDownloaded} aset tersimpan`;
+      document.getElementById('catSpeechText').textContent = `Ekstraksi ${metadata.domain} selesai (${metadata.stats.assetsDownloaded} aset).`;
+      document.getElementById('telEngineState').textContent = 'Completed';
+      document.getElementById('telActivePacket').textContent = 'Archive Ready';
+      document.getElementById('telPlatform').textContent = metadata.platform;
       document.getElementById('extractBtn').disabled = false;
 
       const actions = document.getElementById('exportActions');
@@ -1315,21 +1444,16 @@
     }
 
     function renderTokens(metadata) {
-      const card = document.getElementById('tokensCard');
-      card.style.display = 'block';
-
       const colorsWrap = document.getElementById('colorsWrap');
       colorsWrap.innerHTML = '';
-      (metadata.stats.colors || []).forEach((color) => {
+
+      (metadata.stats?.colors || []).slice(0, 10).forEach((color) => {
         const chip = document.createElement('button');
-        chip.className = 'pill-btn-outline';
-        chip.style.height = '34px';
-        chip.style.padding = '0 14px';
-        chip.style.fontSize = '12px';
-        chip.style.gap = '8px';
+        chip.className = 'btn-sm';
+        chip.style.cssText = 'height:28px; padding:0 10px; font-size:11px; gap:6px;';
 
         const dot = document.createElement('span');
-        dot.style.cssText = 'width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,0.15);';
+        dot.style.cssText = 'width:10px; height:10px; border-radius:50%; border:1px solid rgba(0,0,0,0.2);';
         dot.style.background = color;
 
         const label = document.createElement('span');
@@ -1341,17 +1465,12 @@
         colorsWrap.appendChild(chip);
       });
 
-      const fontsWrap = document.getElementById('fontsWrap');
-      fontsWrap.innerHTML = '';
-      (metadata.stats.fonts || []).forEach((font) => {
-        const chip = document.createElement('span');
-        chip.className = 'pill-btn-outline';
-        chip.style.height = '34px';
-        chip.style.padding = '0 16px';
-        chip.style.fontSize = '12px';
-        chip.textContent = font;
-        fontsWrap.appendChild(chip);
-      });
+      if (colorsWrap.children.length === 0) {
+        const empty = document.createElement('span');
+        empty.style.cssText = 'font-size:12.5px; color:var(--ink-light);';
+        empty.textContent = 'Tidak ada color tokens ditemukan.';
+        colorsWrap.appendChild(empty);
+      }
     }
 
     function copyTailwindTokens() {
@@ -1360,8 +1479,8 @@
         {
           theme: {
             extend: {
-              fontFamily: { primary: currentMetadata.stats.fonts },
-              colors: Object.fromEntries((currentMetadata.stats.colors || []).slice(0, 10).map((c, i) => [`token-${i + 1}`, c])),
+              fontFamily: { primary: currentMetadata.stats?.fonts || [] },
+              colors: Object.fromEntries((currentMetadata.stats?.colors || []).slice(0, 10).map((c, i) => [`token-${i + 1}`, c])),
             },
           },
         },
@@ -1371,95 +1490,78 @@
       navigator.clipboard.writeText(cfg);
     }
 
-    // 9. Load Archive Cards (Gaya Project Card TD_Alexfolio)
+    // 9. Load Archive di Kolom Kanan
     async function loadArchive() {
       try {
         const res = await fetch('/api/history');
         const items = await res.json();
         const grid = document.getElementById('historyGrid');
         grid.innerHTML = '';
+        document.getElementById('archiveCountBadge').textContent = `${items.length} saved`;
 
         items.forEach((item) => {
-          const year = new Date(item.createdAt).getFullYear();
           const card = document.createElement('div');
-          card.className = 'archive-card';
+          card.className = 'archive-compact-card';
 
-          const imgWrap = document.createElement('div');
-          imgWrap.className = 'archive-img-wrap';
+          const thumb = document.createElement('div');
+          thumb.className = 'archive-thumb';
           const img = document.createElement('img');
           img.src = item.screenshotUrl;
           img.alt = item.domain || '';
           img.onerror = () => {
             img.style.display = 'none';
           };
-          imgWrap.appendChild(img);
+          thumb.appendChild(img);
 
-          const body = document.createElement('div');
-          body.className = 'archive-body';
+          const info = document.createElement('div');
+          const topMeta = document.createElement('div');
+          topMeta.style.cssText = 'display:flex; justify-content:space-between; font-size: 11.5px; font-weight: 600; color: var(--ink-light);';
+          const platSpan = document.createElement('span');
+          platSpan.textContent = item.platform || 'Web';
+          const fileSpan = document.createElement('span');
+          fileSpan.textContent = `${item.stats?.assetsDownloaded || 0} files`;
+          topMeta.appendChild(platSpan);
+          topMeta.appendChild(fileSpan);
 
-          const head = document.createElement('div');
-          const metaP = document.createElement('p');
-          metaP.style.cssText = 'font-size: 13px; color: var(--ink-light); margin-bottom: 8px;';
-          metaP.textContent = `(${year}) • ${item.platform}`;
+          const titleEl = document.createElement('h4');
+          titleEl.style.cssText = 'font-size: 16px; font-weight: 700; color: var(--ink-dark); margin-top: 2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+          titleEl.textContent = item.title || item.domain;
 
-          const titleH3 = document.createElement('h3');
-          titleH3.style.cssText = 'font-size: 28px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.1;';
-          titleH3.textContent = item.title || item.domain;
+          const domainEl = document.createElement('p');
+          domainEl.style.cssText = 'font-size: 12.5px; color: var(--ink-mid); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+          domainEl.textContent = item.domain;
 
-          const domainP = document.createElement('p');
-          domainP.style.cssText = 'font-size: 14px; color: var(--ink-mid); margin-top: 8px;';
-          domainP.textContent = item.domain;
+          info.appendChild(topMeta);
+          info.appendChild(titleEl);
+          info.appendChild(domainEl);
 
-          head.appendChild(metaP);
-          head.appendChild(titleH3);
-          head.appendChild(domainP);
-
-          const footer = document.createElement('div');
-          footer.style.cssText = 'display: flex; flex-direction: column; gap: 8px; padding-top: 16px; border-top: 1px solid var(--line-dark);';
-
-          const statRow = document.createElement('div');
-          statRow.style.cssText = 'display: flex; justify-content: space-between; font-size: 13px; color: var(--ink-mid);';
-          const statLabel = document.createElement('span');
-          statLabel.textContent = 'Assets Stored';
-          const statVal = document.createElement('span');
-          statVal.textContent = `${item.stats?.assetsDownloaded || 0} files`;
-          statRow.appendChild(statLabel);
-          statRow.appendChild(statVal);
-
-          const btnRow = document.createElement('div');
-          btnRow.style.cssText = 'display: flex; gap: 8px; margin-top: 10px;';
+          const btns = document.createElement('div');
+          btns.style.cssText = 'display:flex; gap: 6px; margin-top: 4px;';
 
           const inspectBtn = document.createElement('button');
-          inspectBtn.className = 'pill-btn';
-          inspectBtn.style.cssText = 'flex:1; height: 42px; padding: 0 18px; font-size: 13px;';
+          inspectBtn.className = 'btn-sm btn-sm-dark';
+          inspectBtn.style.flex = '1';
           inspectBtn.textContent = 'Inspect Folder';
           inspectBtn.onclick = () => openArchiveFolder(item);
 
           const previewA = document.createElement('a');
           previewA.href = item.previewUrl;
           previewA.target = '_blank';
-          previewA.className = 'pill-btn-outline';
-          previewA.style.cssText = 'height: 42px; padding: 0 16px; font-size: 13px;';
+          previewA.className = 'btn-sm';
           previewA.textContent = 'Preview';
 
           const zipA = document.createElement('a');
           zipA.href = item.zipUrl;
-          zipA.className = 'pill-btn-outline';
-          zipA.style.cssText = 'height: 42px; padding: 0 16px; font-size: 13px;';
+          zipA.className = 'btn-sm';
           zipA.textContent = 'ZIP';
 
-          btnRow.appendChild(inspectBtn);
-          btnRow.appendChild(previewA);
-          btnRow.appendChild(zipA);
+          btns.appendChild(inspectBtn);
+          btns.appendChild(previewA);
+          btns.appendChild(zipA);
 
-          footer.appendChild(statRow);
-          footer.appendChild(btnRow);
-
-          body.appendChild(head);
-          body.appendChild(footer);
-
-          card.appendChild(imgWrap);
-          card.appendChild(body);
+          card.appendChild(thumb);
+          card.appendChild(info);
+          card.appendChild(btns);
           grid.appendChild(card);
         });
       } catch {}
@@ -1480,10 +1582,9 @@
         actions.style.display = 'flex';
         document.getElementById('previewLinkBtn').href = item.previewUrl;
         document.getElementById('zipDownloadBtn').href = item.zipUrl;
-        if (item.stats) renderTokens(item);
+        document.getElementById('telPlatform').textContent = item.platform || 'Port 9222';
+        renderTokens(item);
       }
-
-      lenis.scrollTo('#workspace', { offset: -20 });
     }
 
     window.addEventListener('DOMContentLoaded', () => {
