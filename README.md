@@ -32,3 +32,17 @@ Ensure you have **Node.js (v22.19+ or v24+)** installed on your machine.
 *(Optional)* To enable deep CDP & bundle reverse engineering via `morluto/rea`, install `rea-agents` globally:
 ```bash
 npm install -g rea-agents@latest
+
+#2. Installation
+Clone this repository and install the dependencies:
+Bash
+git clone https://github.com/YOUR_USERNAME/website-extractor.git
+cd website-extractor
+npm install
+npx playwright install chromium
+3. Run the Server
+Bash
+node server.js
+Open http://localhost:3000 in your browser.
+
+
