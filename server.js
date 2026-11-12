@@ -6,8 +6,21 @@ const cheerio = require('cheerio');
 const archiver = require('archiver');
 const { execFile } = require('child_process');
 const fs = require('fs');
+const net = require('net');
 const path = require('path');
 const cors = require('cors');
+const {
+  sanitizeAssetFilename,
+  attachNetworkCollector,
+  recoverSourceMaps,
+  extractMotionFromCssTexts,
+  evaluateDeepDomData,
+  buildColorsAndFontsCatalog,
+  writeTsxAndMotionWorkspace,
+  selectCrawlableRoutes,
+  simulateUiInteractions,
+  writeViteReactProject,
+} = require('./lib/deep-extractor');
 
 const app = express();
 app.use(cors());
@@ -15,11 +28,24 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const EXPORTS_ROOT = path.join(__dirname, 'exports');
+const TRASH_ROOT = path.join(EXPORTS_ROOT, '.trash');
 if (!fs.existsSync(EXPORTS_ROOT)) fs.mkdirSync(EXPORTS_ROOT, { recursive: true });
-app.use('/downloads', express.static(EXPORTS_ROOT));
+app.use('/downloads', express.static(EXPORTS_ROOT, { dotfiles: 'ignore' }));
 
-const CDP_PORT = 9222;
-const CDP_ENDPOINT = `http://127.0.0.1:${CDP_PORT}`;
+const DEFAULT_CDP_PORT = 9222;
+
+function getAvailableCdpPort(startPort = DEFAULT_CDP_PORT) {
+  return new Promise((resolve) => {
+    const tryPort = (port) => {
+      if (port > startPort + 20) return resolve(startPort);
+      const srv = net.createServer();
+      srv.once('error', () => tryPort(port + 1));
+      srv.once('listening', () => srv.close(() => resolve(port)));
+      srv.listen(port, '127.0.0.1');
+    };
+    tryPort(startPort);
+  });
+}
 
 // Helper: Jalankan CLI morluto/rea
 function runReaCommand(args) {
@@ -60,8 +86,10 @@ function sanitizeTargetId(rawId) {
   return /^[A-Za-z0-9_-]+$/.test(trimmed) ? trimmed : null;
 }
 
-// Helper: Rewrite url(...) di dalam CSS ke path lokal ../images/
-async function rewriteCssUrls(cssContent, cssUrl, imgDir, counterRef) {
+// Helper: Rewrite url(...) di dalam CSS ke path lokal ../images/ atau ../fonts/
+const FONT_EXTS = new Set(['.woff2', '.woff', '.ttf', '.otf', '.eot']);
+
+async function rewriteCssUrls(cssContent, cssUrl, { imgDir, fontsDir }, counterRef, urlToLocalMap) {
   const urlPattern = /url\(\s*['"]?([^'")]+)['"]?\s*\)/g;
   const tasks = [];
   const replacements = new Map();
@@ -75,13 +103,19 @@ async function rewriteCssUrls(cssContent, cssUrl, imgDir, counterRef) {
       const absUrl = new URL(original, cssUrl).href;
       let ext = path.extname(new URL(absUrl).pathname).split('?')[0] || '.bin';
       if (!/^\.[a-z0-9]{1,6}$/i.test(ext)) ext = '.bin';
-      const fileName = `css_asset_${++counterRef.val}${ext}`;
-      const destPath = path.join(imgDir, fileName);
+      const isFont = FONT_EXTS.has(ext.toLowerCase());
+      const fileName = isFont ? `css_font_${++counterRef.val}${ext}` : `css_asset_${++counterRef.val}${ext}`;
+      const targetDir = isFont ? fontsDir : imgDir;
+      fs.mkdirSync(targetDir, { recursive: true });
+      const destPath = path.join(targetDir, fileName);
       replacements.set(original, null);
       tasks.push(
         downloadAsset(absUrl, destPath).then((res) => {
           if (res.ok) {
-            replacements.set(original, `../images/${fileName}`);
+            replacements.set(original, isFont ? `../fonts/${fileName}` : `../images/${fileName}`);
+            if (urlToLocalMap) {
+              urlToLocalMap.set(absUrl, isFont ? `assets/fonts/${fileName}` : `assets/images/${fileName}`);
+            }
           }
         })
       );
@@ -171,11 +205,15 @@ app.get('/api/extract-stream', async (req, res) => {
     domain,
     removeWatermarks = 'true',
     runReaAnalysis = 'true',
+    crawlSubPages = 'true',
+    simulateUi = 'true',
     viewport = 'desktop',
   } = req.query;
 
   removeWatermarks = removeWatermarks === 'true';
   runReaAnalysis = runReaAnalysis === 'true';
+  crawlSubPages = crawlSubPages === 'true';
+  simulateUi = simulateUi === 'true';
 
   // Setup Header SSE
   res.setHeader('Content-Type', 'text/event-stream');
@@ -221,6 +259,7 @@ app.get('/api/extract-stream', async (req, res) => {
   const cssDir = path.join(assetsDir, 'css');
   const jsDir = path.join(assetsDir, 'js');
   const imgDir = path.join(assetsDir, 'images');
+  const fontsDir = path.join(assetsDir, 'fonts');
   const reaDir = path.join(exportDir, 'rea-blueprint');
 
   [exportDir, assetsDir, cssDir, jsDir, imgDir, reaDir].forEach((dir) =>
@@ -235,23 +274,27 @@ app.get('/api/extract-stream', async (req, res) => {
   const selectedViewport = viewports[viewport] || viewports.desktop;
 
   try {
+    const cdpPort = await getAvailableCdpPort(DEFAULT_CDP_PORT);
+    const cdpEndpoint = `http://127.0.0.1:${cdpPort}`;
+
     sendEvent('log', {
       tag: 'BOOT',
       jobId,
       progress: 8,
-      catSpeech: 'Meow! Menyiapkan Stealth Browser & port CDP 9222...',
-      message: `Membuka Chromium Stealth (${selectedViewport.width}x${selectedViewport.height}) untuk ${parsedUrl.hostname}`,
+      catSpeech: `Meow! Menyiapkan Stealth Browser & port CDP ${cdpPort}...`,
+      message: `Membuka Chromium Stealth (${selectedViewport.width}x${selectedViewport.height}) untuk ${parsedUrl.hostname} (CDP ${cdpPort})`,
     });
 
     browser = await chromium.launch({
       headless: true,
       args: [
-        `--remote-debugging-port=${CDP_PORT}`,
+        `--remote-debugging-port=${cdpPort}`,
         `--remote-debugging-address=127.0.0.1`,
         '--disable-blink-features=AutomationControlled',
         '--no-sandbox',
       ],
     });
+    if (clientClosed) return;
 
     const context = await browser.newContext({
       viewport: selectedViewport,
@@ -260,6 +303,7 @@ app.get('/api/extract-stream', async (req, res) => {
     });
 
     const page = await context.newPage();
+    const networkCollector = attachNetworkCollector(page);
 
     // Anti-Bot Webdriver Stealth
     await page.addInitScript(() => {
@@ -270,7 +314,7 @@ app.get('/api/extract-stream', async (req, res) => {
       tag: 'NAVIGATE',
       progress: 18,
       catSpeech: `Lari ke ${parsedUrl.hostname}... mengendus struktur DOM! 🐾`,
-      message: `Menghubungi ${parsedUrl.href} (Smart Anti-Timeout aktif)...`,
+      message: `Menghubungi ${parsedUrl.href} (Smart Anti-Timeout + Network Interceptor aktif)...`,
     });
 
     // SOLUSI ANTI-TIMEOUT (Adidas.com, E-commerce, dll):
@@ -294,8 +338,8 @@ app.get('/api/extract-stream', async (req, res) => {
     sendEvent('log', {
       tag: 'SCROLL',
       progress: 34,
-      catSpeech: 'Menggulung halaman dari atas ke bawah biar semua gambar keluar...',
-      message: 'Menjalankan Auto-Scroll untuk merender gambar lazy-load & animasi...',
+      catSpeech: 'Menggulung halaman dari atas ke bawah biar semua gambar & animasi keluar...',
+      message: 'Menjalankan Auto-Scroll untuk merender gambar lazy-load, Lottie, & animasi scroll...',
     });
 
     await page.evaluate(async () => {
@@ -315,66 +359,7 @@ app.get('/api/extract-stream', async (req, res) => {
     });
     await page.waitForTimeout(1000);
 
-    // Ekstrak Design Tokens & Elemen Semantik
-    sendEvent('log', {
-      tag: 'TOKENS',
-      progress: 44,
-      catSpeech: 'Mengumpulkan palet warna, font, dan komponen UI! 🎨',
-      message: 'Mengekstrak Computed Styles, Colors, Typography, dan Semantic Sections...',
-    });
-
-    const extractedElements = await page.evaluate(() => {
-      const colors = new Set();
-      const fonts = new Set();
-      const components = [];
-
-      document.querySelectorAll('*').forEach((el) => {
-        const style = window.getComputedStyle(el);
-        if (style.backgroundColor && style.backgroundColor !== 'rgba(0, 0, 0, 0)') colors.add(style.backgroundColor);
-        if (style.color) colors.add(style.color);
-        if (style.fontFamily) {
-          const cleanFont = style.fontFamily.split(',')[0].replace(/['"]/g, '').trim();
-          if (cleanFont) fonts.add(cleanFont);
-        }
-      });
-
-      const semanticSelectors = ['header', 'nav', 'main', 'section', 'article', 'footer', 'form', 'button'];
-      semanticSelectors.forEach((tag) => {
-        document.querySelectorAll(tag).forEach((el, idx) => {
-          const rect = el.getBoundingClientRect();
-          components.push({
-            tag,
-            index: idx,
-            id: el.id || null,
-            classes: typeof el.className === 'string' ? el.className : null,
-            width: Math.round(rect.width),
-            height: Math.round(rect.height),
-            htmlPreview: el.outerHTML.slice(0, 500),
-          });
-        });
-      });
-
-      return {
-        title: document.title || 'Untitled Website',
-        colors: Array.from(colors).slice(0, 24),
-        fonts: Array.from(fonts).slice(0, 12),
-        componentsCount: components.length,
-        components,
-      };
-    });
-
-    const tokensPath = path.join(reaDir, 'design-tokens-and-elements.json');
-    fs.writeFileSync(tokensPath, JSON.stringify(extractedElements, null, 2));
-
-    sendEvent('catCarry', {
-      fileType: 'JSON',
-      fileName: 'design-tokens-and-elements.json',
-      folderPath: 'rea-blueprint/design-tokens-and-elements.json',
-      size: fs.statSync(tokensPath).size,
-      catSpeech: 'Membawa design-tokens.json ke brankas folder! 🐾',
-    });
-
-    // Screenshot Preview
+    // Screenshot Preview sebelum simulasi dropdown/tab agar thumbnail landing bersih
     const ssPath = path.join(exportDir, 'preview.png');
     await page.screenshot({ path: ssPath, fullPage: false });
     sendEvent('catCarry', {
@@ -382,28 +367,82 @@ app.get('/api/extract-stream', async (req, res) => {
       fileName: 'preview.png',
       folderPath: 'preview.png',
       size: fs.statSync(ssPath).size,
-      catSpeech: 'Cekrek! Menyimpan foto preview.png 📸',
+      catSpeech: 'Mengamankan thumbnail landing preview.png 📸',
     });
 
-    // Jalankan Reverse Engineering morluto/rea via CDP Port 9222
+    // Simulasi Interaksi UI (auto-hover & click tab/accordion/menu aman)
+    let interactionReport = { hoveredCount: 0, clickedCount: 0, newlyAddedNodes: 0, actions: [] };
+    if (simulateUi) {
+      sendEvent('log', {
+        tag: 'INTERACT',
+        progress: 40,
+        catSpeech: 'Menyimulasikan hover menu, tab & dropdown untuk mengungkap DOM tersembunyi...',
+        message: 'Menjalankan Simulasi Interaksi UI (hover nav, tab, accordion, dropdown)...',
+      });
+      interactionReport = await simulateUiInteractions(page);
+      const interactPath = path.join(reaDir, 'interactive-states.json');
+      fs.writeFileSync(interactPath, JSON.stringify(interactionReport, null, 2));
+      if (interactionReport.actions.length > 0) {
+        sendEvent('catCarry', {
+          fileType: 'JSON',
+          fileName: 'interactive-states.json',
+          folderPath: 'rea-blueprint/interactive-states.json',
+          size: fs.statSync(interactPath).size,
+          catSpeech: `Terdeteksi ${interactionReport.clickedCount} klik & ${interactionReport.hoveredCount} hover interaktif!`,
+        });
+      }
+    }
+
+    // Ekstrak Design Tokens, Motion Primitives, SVGs & Semantic Sections
+    sendEvent('log', {
+      tag: 'TOKENS',
+      progress: 46,
+      catSpeech: 'Mengumpulkan palet warna, font, @keyframes animasi, dan section DOM!',
+      message: 'Mengekstrak Computed Styles, @keyframes, Curves, SVGs, & Semantic Sections...',
+    });
+
+    const extractedElements = await evaluateDeepDomData(page);
+
+    const tokensPath = path.join(reaDir, 'design-tokens-and-elements.json');
+    fs.writeFileSync(tokensPath, JSON.stringify(extractedElements, null, 2));
+
+    if ((extractedElements.internalRoutes || []).length > 0) {
+      fs.writeFileSync(
+        path.join(reaDir, 'routes-inventory.json'),
+        JSON.stringify({ domain: parsedUrl.hostname, routes: extractedElements.internalRoutes }, null, 2)
+      );
+    }
+
+    sendEvent('catCarry', {
+      fileType: 'JSON',
+      fileName: 'design-tokens-and-elements.json',
+      folderPath: 'rea-blueprint/design-tokens-and-elements.json',
+      size: fs.statSync(tokensPath).size,
+      catSpeech: 'Membawa design-tokens.json ke brankas folder!',
+    });
+
+    // Jalankan Reverse Engineering morluto/rea via CDP
     let reaReport = { status: 'skipped' };
     let reaStatus = 'skipped';
     let targetId = null;
+
+    if (clientClosed) return;
 
     if (runReaAnalysis) {
       sendEvent('log', {
         tag: 'REA-CDP',
         progress: 52,
-        catSpeech: 'Memanggil mesin morluto/rea untuk bedah CDP port 9222... 🔍',
+        catSpeech: `Memanggil mesin morluto/rea untuk bedah CDP port ${cdpPort}...`,
         message: 'Menjalankan `rea list-browser-targets` & `rea inspect-web-page`...',
       });
 
       const targets = await runReaCommand([
         'list-browser-targets',
-        CDP_ENDPOINT,
+        cdpEndpoint,
         '--format',
         'json',
       ]);
+      if (clientClosed) return;
 
       const targetList = extractReaTargets(targets);
       if (targetList.length > 0) {
@@ -415,7 +454,7 @@ app.get('/api/extract-stream', async (req, res) => {
       if (targetId) {
         const pageInspection = await runReaCommand([
           'inspect-web-page',
-          CDP_ENDPOINT,
+          cdpEndpoint,
           targetId,
           '--include-accessibility-text',
           '--include-console-text',
@@ -424,15 +463,17 @@ app.get('/api/extract-stream', async (req, res) => {
           '--format',
           'json',
         ]);
+        if (clientClosed) return;
 
         const bundleAnalysis = await runReaCommand([
           'analyze-web-bundle',
-          CDP_ENDPOINT,
+          cdpEndpoint,
           targetId,
           '--fetch-source-maps',
           '--format',
           'json',
         ]);
+        if (clientClosed) return;
 
         reaReport = { targets, pageInspection, bundleAnalysis };
         const hasInspectOk = pageInspection && !pageInspection.error && pageInspection.status !== 'warning';
@@ -476,10 +517,47 @@ app.get('/api/extract-stream', async (req, res) => {
       }
     }
 
-    // Proses HTML, Hapus Watermark, Download Semua Aset
+    // Ambil HTML halaman utama terlebih dahulu sebelum crawl sub-halaman
     const rawHtml = await page.content();
     const platform = detectPlatform(rawHtml);
     const $ = cheerio.load(rawHtml);
+
+    // Multi-Page Crawler Otomatis (render & clone sub-halaman internal)
+    const crawledPages = [];
+    if (crawlSubPages && !clientClosed) {
+      const targetRoutes = selectCrawlableRoutes(extractedElements.internalRoutes, 4);
+      if (targetRoutes.length > 0) {
+        sendEvent('log', {
+          tag: 'CRAWL',
+          progress: 62,
+          catSpeech: `Menemukan ${targetRoutes.length} sub-halaman internal — merender otomatis...`,
+          message: `Multi-Page Crawler memproses ${targetRoutes.map((r) => r.routePath).join(', ')}...`,
+        });
+
+        for (const rItem of targetRoutes) {
+          if (clientClosed) break;
+          try {
+            const subUrl = new URL(rItem.routePath, parsedUrl.origin).href;
+            await page.goto(subUrl, { waitUntil: 'domcontentloaded', timeout: 20000 });
+            await page.waitForTimeout(700);
+            if (simulateUi) await simulateUiInteractions(page);
+            const subDeep = await evaluateDeepDomData(page);
+            const subRawHtml = await page.content();
+            crawledPages.push({
+              ...rItem,
+              url: subUrl,
+              title: subDeep.title || rItem.slug,
+              rawHtml: subRawHtml,
+              sections: subDeep.rawSections || [],
+            });
+          } catch {}
+        }
+      }
+    }
+
+    networkCollector.detach();
+    const capturedNetworkAssets = networkCollector.getCaptured();
+    const networkByUrl = new Map(capturedNetworkAssets.map((a) => [a.url, a]));
 
     await browser.close();
     browser = null;
@@ -491,16 +569,39 @@ app.get('/api/extract-stream', async (req, res) => {
     }
 
     const assetJobs = [];
+    const savedUrls = new Set();
+    const urlToLocalMap = new Map();
+    const savedScriptEntries = [];
+    const cssTexts = [];
     const counterRef = { val: 0 };
 
-    // CSS
+    // Collect inline <style> texts too for keyframe/curve extraction
+    $('style').each((_, el) => {
+      const txt = $(el).html();
+      if (txt && txt.trim()) cssTexts.push(txt);
+    });
+
+    // Save inline <script> blocks for inspection
+    let inlineScriptCount = 0;
+    $('script:not([src])').each((_, el) => {
+      const txt = $(el).html();
+      if (!txt || txt.trim().length < 25 || inlineScriptCount >= 12) return;
+      const fileName = `inline_${++inlineScriptCount}.js`;
+      fs.writeFileSync(path.join(jsDir, fileName), txt, 'utf-8');
+      savedScriptEntries.push({ absUrl: parsedUrl.href, content: txt });
+    });
+
+    // CSS from <link rel="stylesheet">
     $('link[rel="stylesheet"]').each((_, el) => {
       const href = $(el).attr('href');
       if (!href) return;
       try {
         const absUrl = new URL(href, parsedUrl.href).href;
+        if (savedUrls.has(absUrl)) return;
+        savedUrls.add(absUrl);
         const fileName = `style_${++counterRef.val}.css`;
         const relPath = `assets/css/${fileName}`;
+        urlToLocalMap.set(absUrl, relPath);
         assetJobs.push({
           type: 'CSS',
           absUrl,
@@ -512,14 +613,17 @@ app.get('/api/extract-stream', async (req, res) => {
       } catch {}
     });
 
-    // JS
+    // JS from <script src>
     $('script[src]').each((_, el) => {
       const src = $(el).attr('src');
       if (!src) return;
       try {
         const absUrl = new URL(src, parsedUrl.href).href;
+        if (savedUrls.has(absUrl)) return;
+        savedUrls.add(absUrl);
         const fileName = `script_${++counterRef.val}.js`;
         const relPath = `assets/js/${fileName}`;
+        urlToLocalMap.set(absUrl, relPath);
         assetJobs.push({
           type: 'JS',
           absUrl,
@@ -531,11 +635,15 @@ app.get('/api/extract-stream', async (req, res) => {
       } catch {}
     });
 
-    // Images (max 45)
+    // Images (max 150, includes data-src & srcset highest candidate)
     let imgCount = 0;
     $('img').each((_, el) => {
-      const src = $(el).attr('src') || $(el).attr('data-src');
-      if (!src || src.startsWith('data:') || imgCount >= 45) return;
+      let src = $(el).attr('src') || $(el).attr('data-src');
+      if (!src && $(el).attr('srcset')) {
+        const parts = $(el).attr('srcset').split(',').map((s) => s.trim().split(/\s+/)[0]).filter(Boolean);
+        src = parts[parts.length - 1];
+      }
+      if (!src || src.startsWith('data:') || imgCount >= 150) return;
       try {
         const absUrl = new URL(src, parsedUrl.href).href;
         let ext = path.extname(new URL(absUrl).pathname).split('?')[0] || '.png';
@@ -543,6 +651,7 @@ app.get('/api/extract-stream', async (req, res) => {
         const fileName = `img_${++counterRef.val}${ext}`;
         const relPath = `assets/images/${fileName}`;
         imgCount++;
+        urlToLocalMap.set(absUrl, relPath);
         assetJobs.push({
           type: 'IMG',
           absUrl,
@@ -557,26 +666,47 @@ app.get('/api/extract-stream', async (req, res) => {
       } catch {}
     });
 
-    // Download aset batch + animasi kucing
+    // Download/write DOM asset batch
     let downloadedCount = 0;
+    const savedAssetsSummary = { css: 0, js: 0, images: 0, fonts: 0, animations: 0, icons: 0, media: 0 };
     const batchSize = 5;
+
     for (let i = 0; i < assetJobs.length; i += batchSize) {
       if (clientClosed) break;
       const batch = assetJobs.slice(i, i + batchSize);
       await Promise.all(
         batch.map(async (job) => {
-          const result = await downloadAsset(job.absUrl, job.destPath);
+          let result = { ok: false, size: 0 };
+          const netHit = networkByUrl.get(job.absUrl);
+          if (netHit && netHit.buffer) {
+            fs.writeFileSync(job.destPath, netHit.buffer);
+            result = { ok: true, size: netHit.buffer.length };
+          } else {
+            result = await downloadAsset(job.absUrl, job.destPath);
+          }
+
           if (result.ok) {
             if (job.type === 'CSS') {
+              savedAssetsSummary.css++;
               try {
                 const cssRaw = fs.readFileSync(job.destPath, 'utf-8');
-                const rewrittenCss = await rewriteCssUrls(cssRaw, job.absUrl, imgDir, counterRef);
+                cssTexts.push(cssRaw);
+                const rewrittenCss = await rewriteCssUrls(cssRaw, job.absUrl, { imgDir, fontsDir }, counterRef, urlToLocalMap);
                 fs.writeFileSync(job.destPath, rewrittenCss);
               } catch {}
+            } else if (job.type === 'JS') {
+              savedAssetsSummary.js++;
+              try {
+                const jsRaw = fs.readFileSync(job.destPath, 'utf-8');
+                savedScriptEntries.push({ absUrl: job.absUrl, content: jsRaw });
+              } catch {}
+            } else if (job.type === 'IMG') {
+              savedAssetsSummary.images++;
             }
+
             job.applyRewrite();
             downloadedCount++;
-            const currentProgress = Math.min(90, 60 + Math.round((downloadedCount / Math.max(1, assetJobs.length)) * 30));
+            const currentProgress = Math.min(82, 60 + Math.round((downloadedCount / Math.max(1, assetJobs.length)) * 22));
             sendEvent('catCarry', {
               fileType: job.type,
               fileName: job.fileName,
@@ -590,7 +720,157 @@ app.get('/api/extract-stream', async (req, res) => {
       );
     }
 
-    // Simpan index.html setelah aset yang berhasil di-rewrite
+    // Persist extra dynamic assets captured via Network Interceptor (JS chunks, fonts, Lottie, SVGs, video)
+    for (const netAsset of capturedNetworkAssets) {
+      if (clientClosed) break;
+      if (savedUrls.has(netAsset.url) || netAsset.kind === 'map' || netAsset.kind === 'image') continue;
+      savedUrls.add(netAsset.url);
+
+      let targetSubdir = null;
+      let extFallback = '.bin';
+      if (netAsset.kind === 'js') {
+        targetSubdir = 'js';
+        extFallback = '.js';
+        savedAssetsSummary.js++;
+        savedScriptEntries.push({ absUrl: netAsset.url, content: netAsset.buffer.toString('utf-8') });
+      } else if (netAsset.kind === 'css') {
+        targetSubdir = 'css';
+        extFallback = '.css';
+        savedAssetsSummary.css++;
+        cssTexts.push(netAsset.buffer.toString('utf-8'));
+      } else if (netAsset.kind === 'font') {
+        targetSubdir = 'fonts';
+        extFallback = '.woff2';
+        savedAssetsSummary.fonts++;
+      } else if (netAsset.kind === 'animation') {
+        targetSubdir = 'animations';
+        extFallback = netAsset.ext || '.json';
+        savedAssetsSummary.animations++;
+      } else if (netAsset.kind === 'svg') {
+        targetSubdir = 'icons';
+        extFallback = '.svg';
+        savedAssetsSummary.icons++;
+      } else if (netAsset.kind === 'media') {
+        targetSubdir = 'media';
+        extFallback = netAsset.ext || '.mp4';
+        savedAssetsSummary.media++;
+      }
+
+      if (!targetSubdir) continue;
+      const destSubDir = path.join(assetsDir, targetSubdir);
+      fs.mkdirSync(destSubDir, { recursive: true });
+      const fileName = `net_${++counterRef.val}_${sanitizeAssetFilename(netAsset.url, 'chunk', extFallback)}`;
+      const destPath = path.join(destSubDir, fileName);
+      fs.writeFileSync(destPath, netAsset.buffer);
+      urlToLocalMap.set(netAsset.url, `assets/${targetSubdir}/${fileName}`);
+      downloadedCount++;
+    }
+
+    // Save extracted inline SVGs into assets/icons/
+    if ((extractedElements.inlineSvgs || []).length > 0) {
+      const iconsDir = path.join(assetsDir, 'icons');
+      fs.mkdirSync(iconsDir, { recursive: true });
+      extractedElements.inlineSvgs.forEach((svgMarkup, idx) => {
+        const iconName = `inline_icon_${idx + 1}.svg`;
+        fs.writeFileSync(path.join(iconsDir, iconName), svgMarkup, 'utf-8');
+        savedAssetsSummary.icons++;
+      });
+    }
+
+    // Map crawled routes to local paths and save crawled sub-pages cleanly
+    const routeToRel = new Map([['/', 'index.html']]);
+    crawledPages.forEach((cp) => routeToRel.set(cp.routePath, cp.relOutputPath));
+
+    const rewriteInternalLinks = ($doc, fromRelPath) => {
+      const fromDir = path.posix.dirname(fromRelPath);
+      $doc('a[href]').each((_, el) => {
+        const href = $doc(el).attr('href');
+        if (!href || href.startsWith('#') || href.startsWith('mailto:') || href.startsWith('tel:')) return;
+        try {
+          const u = new URL(href, parsedUrl.origin);
+          if (u.origin !== parsedUrl.origin) return;
+          const cleanPath = u.pathname.replace(/\/+$/, '') || '/';
+          const targetRel = routeToRel.get(cleanPath);
+          if (targetRel) {
+            const relHref = path.posix.relative(fromDir === '.' ? '' : fromDir, targetRel) || 'index.html';
+            $doc(el).attr('href', `${relHref}${u.hash || ''}`);
+          }
+        } catch {}
+      });
+    };
+
+    rewriteInternalLinks($, 'index.html');
+
+    if (crawledPages.length > 0) {
+      for (const cp of crawledPages) {
+        try {
+          const sub$ = cheerio.load(cp.rawHtml);
+          if (removeWatermarks) {
+            sub$(
+              '.w-webflow-badge, #__framer-badge-container, [data-framer-name="Badge"], a[href*="webflow.com?utm_campaign=brandjs"], a[href*="framer.website"]'
+            ).remove();
+          }
+          const depthPrefix = '../'.repeat(cp.relOutputPath.split('/').length - 1);
+
+          // Rewrite known stylesheets, scripts & images to relative local assets
+          sub$('link[rel="stylesheet"]').each((_, el) => {
+            const href = sub$(el).attr('href');
+            if (!href) return;
+            try {
+              const abs = new URL(href, cp.url).href;
+              const loc = urlToLocalMap.get(abs);
+              if (loc) sub$(el).attr('href', `${depthPrefix}${loc}`);
+            } catch {}
+          });
+          sub$('script[src]').each((_, el) => {
+            const src = sub$(el).attr('src');
+            if (!src) return;
+            try {
+              const abs = new URL(src, cp.url).href;
+              const loc = urlToLocalMap.get(abs);
+              if (loc) sub$(el).attr('src', `${depthPrefix}${loc}`);
+            } catch {}
+          });
+          sub$('img').each((_, el) => {
+            const src = sub$(el).attr('src') || sub$(el).attr('data-src');
+            if (!src || src.startsWith('data:')) return;
+            try {
+              const abs = new URL(src, cp.url).href;
+              const loc = urlToLocalMap.get(abs);
+              if (loc) {
+                sub$(el).attr('src', `${depthPrefix}${loc}`);
+                sub$(el).removeAttr('srcset');
+              }
+            } catch {}
+          });
+
+          rewriteInternalLinks(sub$, cp.relOutputPath);
+
+          const subDest = path.join(exportDir, cp.relOutputPath);
+          fs.mkdirSync(path.dirname(subDest), { recursive: true });
+          fs.writeFileSync(subDest, sub$.html(), 'utf-8');
+          sendEvent('catCarry', {
+            fileType: 'HTML',
+            fileName: `${cp.slug}/index.html`,
+            folderPath: cp.relOutputPath,
+            size: fs.statSync(subDest).size,
+            progress: 84,
+            catSpeech: `Sub-halaman ${cp.routePath} berhasil di-clone!`,
+          });
+        } catch {}
+      }
+
+      fs.writeFileSync(
+        path.join(reaDir, 'crawled-pages.json'),
+        JSON.stringify(
+          crawledPages.map((p) => ({ routePath: p.routePath, title: p.title, relOutputPath: p.relOutputPath, sectionsCount: p.sections.length })),
+          null,
+          2
+        )
+      );
+    }
+
+    // Simpan index.html setelah aset & internal link berhasil di-rewrite
     const indexHtmlPath = path.join(exportDir, 'index.html');
     fs.writeFileSync(indexHtmlPath, $.html());
     sendEvent('catCarry', {
@@ -598,15 +878,148 @@ app.get('/api/extract-stream', async (req, res) => {
       fileName: 'index.html',
       folderPath: 'index.html',
       size: fs.statSync(indexHtmlPath).size,
-      progress: 92,
-      catSpeech: 'index.html utama sudah diamankan! 📄✨',
+      progress: 85,
+      catSpeech: 'index.html utama & dynamic chunks sudah diamankan! 📄✨',
     });
+
+    // Source Map Recovery (.js.map -> src-recovered/*.tsx)
+    sendEvent('log', {
+      tag: 'REA-CDP',
+      progress: 88,
+      catSpeech: 'Memeriksa Source Maps (.js.map) & mengekstrak animasi @keyframes...',
+      message: 'Mencari Source Maps (.tsx/.ts) serta mengompilasi @keyframes & komponen TSX...',
+    });
+
+    const sourceMapReport = await recoverSourceMaps({
+      capturedAssets: capturedNetworkAssets,
+      savedScriptEntries,
+      exportDir,
+      downloadFn: downloadAsset,
+    });
+
+    if (sourceMapReport.recoveredFiles.length > 0) {
+      const sample = sourceMapReport.recoveredFiles[0];
+      sendEvent('catCarry', {
+        fileType: 'TSX',
+        fileName: path.basename(sample.relPath),
+        folderPath: sample.relPath,
+        size: sample.size,
+        progress: 90,
+        catSpeech: `Menemukan ${sourceMapReport.recoveredFiles.length} file source asli dari Source Maps! 🎉`,
+      });
+    }
+
+    // Merge CSS + DOM keyframes & cubic-bezier curves
+    const cssMotion = extractMotionFromCssTexts(cssTexts);
+    const mergedKeyframesMap = new Map();
+    [...(extractedElements.domKeyframes || []), ...cssMotion.keyframes].forEach((k) => {
+      if (k && k.name && !mergedKeyframesMap.has(k.name)) mergedKeyframesMap.set(k.name, k);
+    });
+    const mergedCurves = Array.from(new Set([...(cssMotion.curves || []), ...(extractedElements.domCurves || [])])).slice(0, 24);
+
+    // Aggregate deduplicated Color Palette & Font Library
+    const catalog = buildColorsAndFontsCatalog({
+      extractedElements,
+      cssTexts,
+      pageUrl: parsedUrl.href,
+      urlToLocalMap,
+    });
+    extractedElements.colorsDetailed = catalog.colorsDetailed;
+    extractedElements.fontsDetailed = catalog.fontsDetailed;
+    if (catalog.colorsHexList.length > 0) {
+      extractedElements.colors = catalog.colorsHexList;
+    }
+    fs.writeFileSync(tokensPath, JSON.stringify(extractedElements, null, 2));
+
+    // Generate components/*.tsx, motion/animations.css, tailwind.config.ts, EXPORT_REPORT.md
+    const workspaceFiles = writeTsxAndMotionWorkspace({
+      exportDir,
+      domain: parsedUrl.hostname,
+      platform,
+      extractedData: extractedElements,
+      motionData: {
+        keyframes: Array.from(mergedKeyframesMap.values()),
+        curves: mergedCurves,
+      },
+      sourceMapReport,
+      savedAssetsSummary,
+      urlToLocalMap,
+    });
+
+    const keyGenerated = workspaceFiles.find((f) => f.fileName === 'ExtractedPage.tsx') || workspaceFiles[0];
+    if (keyGenerated) {
+      sendEvent('catCarry', {
+        fileType: 'TSX',
+        fileName: keyGenerated.fileName,
+        folderPath: keyGenerated.folderPath,
+        size: keyGenerated.size,
+        progress: 92,
+        catSpeech: `Membentuk ${workspaceFiles.length} file TSX, motion CSS, & Tailwind config!`,
+      });
+    }
+
+    // Auto-generate runnable React + Vite + TSX project under react-vite-app/
+    const viteScaffold = writeViteReactProject({
+      exportDir,
+      domain: parsedUrl.hostname,
+      extractedData: extractedElements,
+      motionData: {
+        keyframes: Array.from(mergedKeyframesMap.values()),
+        curves: mergedCurves,
+      },
+      crawledPages,
+      urlToLocalMap,
+    });
+
+    sendEvent('catCarry', {
+      fileType: 'VITE',
+      fileName: 'react-vite-app/package.json',
+      folderPath: 'react-vite-app/package.json',
+      size: viteScaffold.createdFiles[0]?.size || 0,
+      progress: 94,
+      catSpeech: 'Proyek Vite + React + TSX mandiri siap dijalankan (`npm install && npm run dev`)!',
+    });
+
+    // Simpan Metadata sebelum arsip .ZIP agar ikut terbungkus
+    const metadata = {
+      jobId,
+      domain: parsedUrl.hostname,
+      url: parsedUrl.href,
+      title: extractedElements.title,
+      platform,
+      reaStatus,
+      createdAt: new Date().toISOString(),
+      zipUrl: `/downloads/${jobId}.zip`,
+      previewUrl: `/downloads/${jobId}/index.html`,
+      screenshotUrl: `/downloads/${jobId}/preview.png`,
+      stats: {
+        assetsDownloaded: downloadedCount,
+        componentsCount: extractedElements.componentsCount,
+        colors: extractedElements.colors,
+        colorsDetailed: extractedElements.colorsDetailed,
+        fonts: extractedElements.fonts,
+        fontsDetailed: extractedElements.fontsDetailed,
+        cssVars: extractedElements.cssVars || {},
+        recoveredSourceFiles: sourceMapReport.recoveredFiles.length,
+        tsxComponentsGenerated: workspaceFiles.filter((f) => f.folderPath.startsWith('components/Section_')).length,
+        keyframesCount: mergedKeyframesMap.size,
+        detectedLibraries: extractedElements.detectedLibraries || [],
+        crawledPagesCount: crawledPages.length,
+        interactiveStates: {
+          hovered: interactionReport.hoveredCount,
+          clicked: interactionReport.clickedCount,
+          newlyAddedNodes: interactionReport.newlyAddedNodes,
+        },
+        viteAppGenerated: true,
+      },
+    };
+    fs.writeFileSync(path.join(exportDir, 'metadata.json'), JSON.stringify(metadata, null, 2));
 
     // Bungkus ke ZIP
     sendEvent('log', {
       tag: 'ARCHIVE',
-      progress: 95,
-      catSpeech: 'Membungkus semua tangkapan ke dalam paket .ZIP! 📦🐱',
+      progress: 96,
+      catSpeech: 'Membungkus semua HTML, aset, animasi, & .tsx ke paket .ZIP! 📦🐱',
       message: 'Mengompres seluruh folder menjadi arsip .ZIP...',
     });
 
@@ -622,27 +1035,6 @@ app.get('/api/extract-stream', async (req, res) => {
       archive.directory(exportDir, false);
       archive.finalize();
     });
-
-    // Simpan Metadata
-    const metadata = {
-      jobId,
-      domain: parsedUrl.hostname,
-      url: parsedUrl.href,
-      title: extractedElements.title,
-      platform,
-      reaStatus,
-      createdAt: new Date().toISOString(),
-      zipUrl: `/downloads/${zipFileName}`,
-      previewUrl: `/downloads/${jobId}/index.html`,
-      screenshotUrl: `/downloads/${jobId}/preview.png`,
-      stats: {
-        assetsDownloaded: downloadedCount,
-        componentsCount: extractedElements.componentsCount,
-        colors: extractedElements.colors,
-        fonts: extractedElements.fonts,
-      },
-    };
-    fs.writeFileSync(path.join(exportDir, 'metadata.json'), JSON.stringify(metadata, null, 2));
 
     const folderTree = buildFolderTree(exportDir);
 
@@ -696,13 +1088,24 @@ app.get('/api/file-content', (req, res) => {
   }
 
   const ext = path.extname(absFilePath).toLowerCase();
-  const imageExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico'];
+  const imageExts = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.svg', '.ico', '.avif'];
+  const binaryExts = ['.woff2', '.woff', '.ttf', '.otf', '.eot', '.mp4', '.webm', '.mov', '.riv', '.zip', '.bin', '.wasm'];
+  const encodedPath = String(filePath).replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/');
+  const publicUrl = `/downloads/${encodeURIComponent(String(jobId))}/${encodedPath}`;
 
   if (imageExts.includes(ext)) {
-    const encodedPath = String(filePath).replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/');
     return res.json({
       type: 'image',
-      url: `/downloads/${encodeURIComponent(String(jobId))}/${encodedPath}`,
+      url: publicUrl,
+    });
+  }
+
+  if (binaryExts.includes(ext)) {
+    return res.json({
+      type: 'binary',
+      ext,
+      size: fs.statSync(absFilePath).size,
+      url: publicUrl,
     });
   }
 
@@ -715,15 +1118,68 @@ app.get('/api/file-content', (req, res) => {
 });
 
 // ============================================================================
-// 3. ENDPOINT RIWAYAT EKSTRAKSI (/api/history)
+// 3. ENDPOINT RIWAYAT EKSTRAKSI, DELETE + UNDO & TOKEN CATALOG (/api/history, /api/archive/*)
 // ============================================================================
+function resolveSafeJobPaths(rawJobId) {
+  if (typeof rawJobId !== 'string') return null;
+  const jobId = rawJobId.trim();
+  if (!/^[a-zA-Z0-9][a-zA-Z0-9._-]{0,160}$/.test(jobId) || jobId === '.trash') return null;
+
+  const safeRoot = path.resolve(EXPORTS_ROOT);
+  const dirPath = path.resolve(safeRoot, jobId);
+  const zipPath = path.resolve(safeRoot, `${jobId}.zip`);
+  if (!dirPath.startsWith(safeRoot + path.sep) || !zipPath.startsWith(safeRoot + path.sep)) return null;
+  return { jobId, dirPath, zipPath };
+}
+
+function purgeExpiredTrash(maxAgeMs = 2 * 60 * 60 * 1000) {
+  if (!fs.existsSync(TRASH_ROOT)) return;
+  const now = Date.now();
+  for (const entry of fs.readdirSync(TRASH_ROOT, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const p = path.join(TRASH_ROOT, entry.name);
+    try {
+      const stat = fs.statSync(p);
+      if (now - stat.mtimeMs > maxAgeMs) fs.rmSync(p, { recursive: true, force: true });
+    } catch {}
+  }
+}
+
+function moveJobsToTrash(rawJobIds) {
+  purgeExpiredTrash();
+  const trashId = `trash_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const trashSlot = path.join(TRASH_ROOT, trashId);
+  const deletedIds = [];
+
+  for (const rawId of rawJobIds) {
+    const resolved = resolveSafeJobPaths(rawId);
+    if (!resolved) continue;
+    const hasDir = fs.existsSync(resolved.dirPath);
+    const hasZip = fs.existsSync(resolved.zipPath);
+    if (!hasDir && !hasZip) continue;
+
+    fs.mkdirSync(trashSlot, { recursive: true });
+    if (hasDir) fs.renameSync(resolved.dirPath, path.join(trashSlot, resolved.jobId));
+    if (hasZip) fs.renameSync(resolved.zipPath, path.join(trashSlot, `${resolved.jobId}.zip`));
+    deletedIds.push(resolved.jobId);
+  }
+
+  if (deletedIds.length > 0) {
+    fs.writeFileSync(
+      path.join(trashSlot, 'manifest.json'),
+      JSON.stringify({ trashId, createdAt: new Date().toISOString(), jobIds: deletedIds }, null, 2)
+    );
+  }
+  return { trashId: deletedIds.length > 0 ? trashId : null, deletedIds };
+}
+
 app.get('/api/history', (req, res) => {
   if (!fs.existsSync(EXPORTS_ROOT)) return res.json([]);
   const entries = fs.readdirSync(EXPORTS_ROOT, { withFileTypes: true });
   const history = [];
 
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
     const jobDir = path.join(EXPORTS_ROOT, entry.name);
     const metaPath = path.join(jobDir, 'metadata.json');
 
@@ -774,13 +1230,140 @@ app.get('/api/history', (req, res) => {
         assetsDownloaded,
         componentsCount: tokens.componentsCount || 0,
         colors: tokens.colors || [],
+        colorsDetailed: tokens.colorsDetailed || null,
         fonts: tokens.fonts || [],
+        fontsDetailed: tokens.fontsDetailed || null,
+        cssVars: tokens.cssVars || {},
       },
     });
   }
 
   history.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  res.json(history.slice(0, 12));
+  res.json(history.slice(0, 40));
+});
+
+app.get('/api/archive/tokens/:jobId', (req, res) => {
+  const resolved = resolveSafeJobPaths(req.params.jobId);
+  if (!resolved || !fs.existsSync(resolved.dirPath)) {
+    return res.status(404).json({ error: 'Archive tidak ditemukan' });
+  }
+
+  let metadata = {};
+  let tokens = {};
+  let motionBlueprint = null;
+  try {
+    metadata = JSON.parse(fs.readFileSync(path.join(resolved.dirPath, 'metadata.json'), 'utf-8'));
+  } catch {}
+  try {
+    tokens = JSON.parse(fs.readFileSync(path.join(resolved.dirPath, 'rea-blueprint', 'design-tokens-and-elements.json'), 'utf-8'));
+  } catch {}
+  try {
+    motionBlueprint = JSON.parse(fs.readFileSync(path.join(resolved.dirPath, 'motion', 'motion-blueprint.json'), 'utf-8'));
+  } catch {}
+
+  let colorsDetailed = tokens.colorsDetailed || metadata.stats?.colorsDetailed || null;
+  let fontsDetailed = tokens.fontsDetailed || metadata.stats?.fontsDetailed || null;
+
+  // Backfill legacy archives cleanly from their actual saved CSS & index.html
+  if (!colorsDetailed || !fontsDetailed) {
+    const cssTexts = [];
+    const cssDir = path.join(resolved.dirPath, 'assets', 'css');
+    if (fs.existsSync(cssDir)) {
+      for (const f of fs.readdirSync(cssDir).slice(0, 10)) {
+        if (f.endsWith('.css')) {
+          try {
+            cssTexts.push(fs.readFileSync(path.join(cssDir, f), 'utf-8'));
+          } catch {}
+        }
+      }
+    }
+    const localMap = new Map();
+    const fontsDir = path.join(resolved.dirPath, 'assets', 'fonts');
+    if (fs.existsSync(fontsDir)) {
+      for (const f of fs.readdirSync(fontsDir)) {
+        localMap.set(f, `assets/fonts/${f}`);
+      }
+    }
+    const rawColors = (tokens.colors || metadata.stats?.colors || []).map((c) => ({ raw: c, category: 'Extracted', count: 1 }));
+    const rawFonts = (tokens.fonts || metadata.stats?.fonts || []).map((f) => ({ family: f, weights: [], styles: ['normal'], headingHits: 0, bodyHits: 1 }));
+    const fallbackCatalog = buildColorsAndFontsCatalog({
+      extractedElements: {
+        rawColorObservations: rawColors,
+        rawFontObservations: rawFonts,
+        fontLinks: [],
+      },
+      cssTexts,
+      pageUrl: metadata.url || `https://${metadata.domain || 'localhost'}`,
+      urlToLocalMap: localMap,
+    });
+    if (!colorsDetailed) colorsDetailed = fallbackCatalog.colorsDetailed;
+    if (!fontsDetailed) fontsDetailed = fallbackCatalog.fontsDetailed;
+  }
+
+  res.json({
+    jobId: resolved.jobId,
+    colors: tokens.colors || metadata.stats?.colors || [],
+    colorsDetailed: colorsDetailed || [],
+    fonts: tokens.fonts || metadata.stats?.fonts || [],
+    fontsDetailed: fontsDetailed || [],
+    cssVars: tokens.cssVars || metadata.stats?.cssVars || {},
+    motionBlueprint,
+  });
+});
+
+app.delete('/api/archive/:jobId', (req, res) => {
+  const { trashId, deletedIds } = moveJobsToTrash([req.params.jobId]);
+  if (deletedIds.length === 0) {
+    return res.status(404).json({ error: 'Archive tidak ditemukan atau ID tidak valid' });
+  }
+  res.json({ ok: true, trashId, deletedIds });
+});
+
+app.post('/api/archive/delete-bulk', (req, res) => {
+  const jobIds = Array.isArray(req.body?.jobIds) ? req.body.jobIds : [];
+  if (jobIds.length === 0) return res.status(400).json({ error: 'Pilih minimal satu archive' });
+
+  const { trashId, deletedIds } = moveJobsToTrash(jobIds.slice(0, 60));
+  if (deletedIds.length === 0) return res.status(404).json({ error: 'Tidak ada archive valid ditemukan' });
+  res.json({ ok: true, trashId, deletedIds });
+});
+
+app.post('/api/archive/restore', (req, res) => {
+  const rawTrashId = req.body?.trashId;
+  if (typeof rawTrashId !== 'string' || !/^[a-zA-Z0-9_-]{3,80}$/.test(rawTrashId)) {
+    return res.status(400).json({ error: 'Trash ID tidak valid' });
+  }
+  const safeTrashRoot = path.resolve(TRASH_ROOT);
+  const trashSlot = path.resolve(safeTrashRoot, rawTrashId);
+  if (!trashSlot.startsWith(safeTrashRoot + path.sep) || !fs.existsSync(trashSlot)) {
+    return res.status(404).json({ error: 'Data Undo sudah kedaluwarsa atau tidak ditemukan' });
+  }
+
+  let manifest = { jobIds: [] };
+  try {
+    manifest = JSON.parse(fs.readFileSync(path.join(trashSlot, 'manifest.json'), 'utf-8'));
+  } catch {}
+
+  const restoredIds = [];
+  for (const jobId of manifest.jobIds || []) {
+    const resolved = resolveSafeJobPaths(jobId);
+    if (!resolved) continue;
+    const trashedDir = path.join(trashSlot, resolved.jobId);
+    const trashedZip = path.join(trashSlot, `${resolved.jobId}.zip`);
+    if (fs.existsSync(trashedDir) && !fs.existsSync(resolved.dirPath)) {
+      fs.renameSync(trashedDir, resolved.dirPath);
+    }
+    if (fs.existsSync(trashedZip) && !fs.existsSync(resolved.zipPath)) {
+      fs.renameSync(trashedZip, resolved.zipPath);
+    }
+    restoredIds.push(resolved.jobId);
+  }
+
+  try {
+    fs.rmSync(trashSlot, { recursive: true, force: true });
+  } catch {}
+
+  res.json({ ok: true, restoredIds });
 });
 
 const PORT = 3000;
